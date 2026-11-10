@@ -25,9 +25,9 @@ export const BRAND = {
   defaultEndpoint: "https://api.wending.ai",
   websiteUrl: "https://api.wending.ai",
   /** 控制台：创建 / 查看 API Key */
-  consoleTokenUrl: "https://api.wending.ai/console/token",
+  consoleTokenUrl: "https://api.wending.ai/keys",
   /** 控制台：充值 */
-  consoleTopupUrl: "https://api.wending.ai/console/topup",
+  consoleTopupUrl: "https://api.wending.ai/wallet",
   /** 深链接协议 */
   deeplinkScheme: "wendingai",
   /** 数据目录名（位于用户主目录下） */
