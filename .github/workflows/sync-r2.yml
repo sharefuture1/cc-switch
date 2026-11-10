@@ -43,6 +43,8 @@ concurrency:
 jobs:
   sync-to-r2:
     name: Sync release to R2
+    # WendingAI：上游 R2 镜像（ccswitch.io 下载与更新清单）不属于本分支，永久禁用
+    if: ${{ false }}
     runs-on: ubuntu-22.04
     env:
       R2_BUCKET: cc-switch-releases

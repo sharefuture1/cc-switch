@@ -221,7 +221,7 @@ jobs:
             }
             Write-Host "MSI REBOOT property: $reboot"
 
-            $dest = "CC-Switch-$VERSION-Windows$assetSuffix.msi"
+            $dest = "WendingAI-Switch-$VERSION-Windows$assetSuffix.msi"
             Copy-Item $msi.FullName (Join-Path release-assets $dest)
             Write-Host "Installer copied: $dest"
             $sigPath = "$($msi.FullName).sig"
@@ -237,36 +237,36 @@ jobs:
 
           # 绿色版（portable）：仅可执行文件打 zip（不参与 Updater）
           $exeCandidates = if ($isArm64) {
-            @('src-tauri/target/aarch64-pc-windows-msvc/release/cc-switch.exe')
+            @('src-tauri/target/aarch64-pc-windows-msvc/release/wendingai-switch.exe')
           } else {
             @(
-              'src-tauri/target/release/cc-switch.exe',
-              'src-tauri/target/x86_64-pc-windows-msvc/release/cc-switch.exe'
+              'src-tauri/target/release/wendingai-switch.exe',
+              'src-tauri/target/x86_64-pc-windows-msvc/release/wendingai-switch.exe'
             )
           }
           $exePath = $exeCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
           if ($null -ne $exePath) {
-            $portableDir = 'release-assets/CC-Switch-Portable'
+            $portableDir = 'release-assets/WendingAI-Switch-Portable'
             New-Item -ItemType Directory -Force -Path $portableDir | Out-Null
             Copy-Item $exePath $portableDir
             $portableIniPath = Join-Path $portableDir 'portable.ini'
             $portableContent = if ($isArm64) {
               @(
-                '# CC Switch portable ARM64 build marker',
+                '# WendingAI Switch portable ARM64 build marker',
                 'portable=true',
                 'arch=arm64'
               )
             } else {
               @(
-                '# CC Switch portable build marker',
+                '# WendingAI Switch portable build marker',
                 'portable=true'
               )
             }
             $portableContent | Set-Content -Path $portableIniPath -Encoding UTF8
-            $portableZip = "release-assets/CC-Switch-$VERSION-Windows$assetSuffix-Portable.zip"
+            $portableZip = "release-assets/WendingAI-Switch-$VERSION-Windows$assetSuffix-Portable.zip"
             Compress-Archive -Path "$portableDir/*" -DestinationPath $portableZip -Force
             Remove-Item -Recurse -Force $portableDir
-            Write-Host "Windows portable zip created: CC-Switch-$VERSION-Windows$assetSuffix-Portable.zip"
+            Write-Host "Windows portable zip created: WendingAI-Switch-$VERSION-Windows$assetSuffix-Portable.zip"
           } elseif ($isArm64) {
             throw 'Portable ARM64 exe not found'
           } else {
@@ -292,7 +292,7 @@ jobs:
             echo "❌ Updater signature not found: $APPIMAGE.sig" >&2
             exit 1
           fi
-          NEW_APPIMAGE="CC-Switch-${VERSION}-Linux-${ARCH}.AppImage"
+          NEW_APPIMAGE="WendingAI-Switch-${VERSION}-Linux-${ARCH}.AppImage"
           cp "$APPIMAGE" "release-assets/$NEW_APPIMAGE"
           cp "$APPIMAGE.sig" "release-assets/$NEW_APPIMAGE.sig"
           echo "AppImage copied: $NEW_APPIMAGE"
@@ -306,7 +306,7 @@ jobs:
             echo "❌ Updater signature not found: $DEB.sig" >&2
             exit 1
           fi
-          NEW_DEB="CC-Switch-${VERSION}-Linux-${ARCH}.deb"
+          NEW_DEB="WendingAI-Switch-${VERSION}-Linux-${ARCH}.deb"
           cp "$DEB" "release-assets/$NEW_DEB"
           cp "$DEB.sig" "release-assets/$NEW_DEB.sig"
           echo "Deb package copied: $NEW_DEB"
@@ -320,7 +320,7 @@ jobs:
             echo "❌ Updater signature not found: $RPM.sig" >&2
             exit 1
           fi
-          NEW_RPM="CC-Switch-${VERSION}-Linux-${ARCH}.rpm"
+          NEW_RPM="WendingAI-Switch-${VERSION}-Linux-${ARCH}.rpm"
           cp "$RPM" "release-assets/$NEW_RPM"
           cp "$RPM.sig" "release-assets/$NEW_RPM.sig"
           echo "RPM package copied: $NEW_RPM"
@@ -408,7 +408,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: macos-binary-${{ matrix.target }}
-          path: src-tauri/target/${{ matrix.target }}/release/cc-switch
+          path: src-tauri/target/${{ matrix.target }}/release/wendingai-switch
           if-no-files-found: error
           retention-days: 1
 
@@ -515,11 +515,11 @@ jobs:
           set -euo pipefail
           out=src-tauri/target/universal-apple-darwin/release
           mkdir -p "$out"
-          lipo -create -output "$out/cc-switch" \
-            macos-binaries/macos-binary-aarch64-apple-darwin/cc-switch \
-            macos-binaries/macos-binary-x86_64-apple-darwin/cc-switch
-          chmod +x "$out/cc-switch"
-          lipo -info "$out/cc-switch"
+          lipo -create -output "$out/wendingai-switch" \
+            macos-binaries/macos-binary-aarch64-apple-darwin/wendingai-switch \
+            macos-binaries/macos-binary-x86_64-apple-darwin/wendingai-switch
+          chmod +x "$out/wendingai-switch"
+          lipo -info "$out/wendingai-switch"
 
       # 只打 .app（连同 updater 的 .app.tar.gz 和 .sig）：发布用的 DMG 在下面由 create-dmg 制作，
       # Tauri 自己的 DMG 从来不上传。失败只重试这一步，不会重编。
@@ -609,7 +609,7 @@ jobs:
           echo "✅ .app stapled"
 
           # 1) Collect .tar.gz (updater artifact)
-          NEW_TAR_GZ="CC-Switch-${VERSION}-macOS.tar.gz"
+          NEW_TAR_GZ="WendingAI-Switch-${VERSION}-macOS.tar.gz"
           cp "$TAR_GZ" "release-assets/$NEW_TAR_GZ"
           if [ ! -f "$TAR_GZ.sig" ]; then
             echo "❌ Updater signature not found: $TAR_GZ.sig" >&2
@@ -619,7 +619,7 @@ jobs:
           echo "macOS updater artifact copied: $NEW_TAR_GZ"
 
           # 2) Collect .app as zip
-          NEW_ZIP="CC-Switch-${VERSION}-macOS.zip"
+          NEW_ZIP="WendingAI-Switch-${VERSION}-macOS.zip"
           ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "release-assets/$NEW_ZIP"
           echo "macOS zip ready: $NEW_ZIP"
 
@@ -630,20 +630,20 @@ jobs:
           fi
 
           HOMEBREW_NO_AUTO_UPDATE=1 brew install create-dmg
-          NEW_DMG="CC-Switch-${VERSION}-macOS.dmg"
+          NEW_DMG="WendingAI-Switch-${VERSION}-macOS.dmg"
           DMG_STAGE_DIR="$RUNNER_TEMP/dmg-stage"
           rm -rf "$DMG_STAGE_DIR"
           mkdir -p "$DMG_STAGE_DIR"
-          ditto "$APP_PATH" "$DMG_STAGE_DIR/CC Switch.app"
+          ditto "$APP_PATH" "$DMG_STAGE_DIR/WendingAI Switch.app"
 
           create-dmg \
-            --volname "CC Switch" \
+            --volname "WendingAI Switch" \
             --background "src-tauri/icons/dmg-background.png" \
             --window-size 660 400 \
             --window-pos 200 120 \
             --icon-size 80 \
-            --icon "CC Switch.app" 180 220 \
-            --hide-extension "CC Switch.app" \
+            --icon "WendingAI Switch.app" 180 220 \
+            --hide-extension "WendingAI Switch.app" \
             --app-drop-link 480 220 \
             --codesign "$APPLE_SIGNING_IDENTITY" \
             --no-internet-enable \
@@ -949,22 +949,22 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
-          name: CC Switch ${{ github.ref_name }}
+          name: WendingAI Switch ${{ github.ref_name }}
           prerelease: true
           body: |
-            ## CC Switch ${{ github.ref_name }}
+            ## WendingAI Switch ${{ github.ref_name }}
 
-            🌐 **Only Official Website / 唯一官方网站 / 唯一の公式サイト**: [ccswitch.io](https://ccswitch.io)
+            🌐 **Website / 官网**: [api.wending.ai](https://api.wending.ai)
 
             Claude Code 供应商切换工具
 
             ### 下载
 
-            - **macOS**: `CC-Switch-${{ github.ref_name }}-macOS.dmg`（推荐）或 `CC-Switch-${{ github.ref_name }}-macOS.zip`（解压即用）
-            - **Windows (x86_64)**: `CC-Switch-${{ github.ref_name }}-Windows.msi`（安装版）或 `CC-Switch-${{ github.ref_name }}-Windows-Portable.zip`（绿色版）
-            - **Windows (ARM64)**: `CC-Switch-${{ github.ref_name }}-Windows-arm64.msi`（安装版）或 `CC-Switch-${{ github.ref_name }}-Windows-arm64-Portable.zip`（绿色版）
-            - **Linux (x86_64)**: `CC-Switch-${{ github.ref_name }}-Linux-x86_64.AppImage` / `.deb` / `.rpm`
-            - **Linux (ARM64)**: `CC-Switch-${{ github.ref_name }}-Linux-arm64.AppImage` / `.deb` / `.rpm`
+            - **macOS**: `WendingAI-Switch-${{ github.ref_name }}-macOS.dmg`（推荐）或 `WendingAI-Switch-${{ github.ref_name }}-macOS.zip`（解压即用）
+            - **Windows (x86_64)**: `WendingAI-Switch-${{ github.ref_name }}-Windows.msi`（安装版）或 `WendingAI-Switch-${{ github.ref_name }}-Windows-Portable.zip`（绿色版）
+            - **Windows (ARM64)**: `WendingAI-Switch-${{ github.ref_name }}-Windows-arm64.msi`（安装版）或 `WendingAI-Switch-${{ github.ref_name }}-Windows-arm64-Portable.zip`（绿色版）
+            - **Linux (x86_64)**: `WendingAI-Switch-${{ github.ref_name }}-Linux-x86_64.AppImage` / `.deb` / `.rpm`
+            - **Linux (ARM64)**: `WendingAI-Switch-${{ github.ref_name }}-Linux-arm64.AppImage` / `.deb` / `.rpm`
 
             > `.tar.gz` 为 Tauri updater 自动更新专用，无需手动下载。
 

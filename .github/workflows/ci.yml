@@ -98,6 +98,10 @@ jobs:
       - name: Build frontend
         run: pnpm build:renderer
 
+      # WendingAI：构建产物里不允许出现上游品牌 / 合作推广 / 返利链接
+      - name: Brand check
+        run: bash scripts/check-brand.sh dist
+
   # 单元测试是前端最慢的一段：4 核上约 5 分钟，几乎全是每个文件起 jsdom、跑 setup 的 CPU。
   # 按文件分到四台机器上跑。
   frontend-tests:

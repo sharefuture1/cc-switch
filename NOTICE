@@ -1,0 +1,20 @@
+WendingAI Switch
+================
+
+This product is a modified distribution of CC Switch.
+
+  CC Switch
+  https://github.com/farion1231/cc-switch
+  Copyright (c) 2025 Jason Young
+  Licensed under the MIT License (see the LICENSE file in this repository).
+
+The full text of the MIT License, including the original copyright notice
+above, is retained in LICENSE and must be included in all copies or
+substantial portions of the software, as the license requires.
+
+Modifications for WendingAI (branding, pure edition presets, one-time key
+onboarding, quota display, build tooling) are provided under the same MIT
+License. "WendingAI" and the WendingAI logo are trademarks of their owner and
+are not covered by the MIT License grant.
+
+The application's About page shows this attribution to end users.
