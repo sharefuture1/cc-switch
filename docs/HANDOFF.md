@@ -35,7 +35,7 @@
 | `pnpm test:unit` | 通过：295 个文件，3746 通过 / 9 跳过（跳过的是已删除合作伙伴图标的上游用例） |
 | `pnpm vitest run tests/brand` | 通过 19 / 19 |
 | `cd src-tauri && cargo check` | 通过 |
-| `cd src-tauri && cargo test --no-fail-fast` | 修复 2 个硬编码 `.cc-switch` 的用例后，相关用例重跑通过（lib 4548 通过；provider_service 55 通过）；`cargo fmt --check` 通过 |
+| `cd src-tauri && cargo test --no-fail-fast` | 通过：全部测试二进制共 4765 通过 / 0 失败 / 14 忽略（含 2 个原先硬编码 `.cc-switch` 的用例，已改用 `brand::DATA_DIR_NAME`）；`cargo fmt --check` 通过 |
 | `cargo test --lib wending_quota::tests::live_invalid_key -- --ignored` | 通过：api.wending.ai 返回 HTTP 401 “Invalid token”，结果不含 Key |
 | `pnpm build:renderer && scripts/check-brand.sh` | 通过（56 个文件 0 命中） |
 | 反向对照：`WENDING_UPSTREAM_MODE=1 vite build --outDir /tmp/dist-upstream` 再检查 | 按预期失败（775 处命中），说明检查有效 |
