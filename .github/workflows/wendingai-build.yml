@@ -66,8 +66,9 @@ jobs:
           - name: windows-x64
             os: windows-2022
             bundles: nsis,msi
+          # Apple Silicon 托管 runner 经常排不上（capacity），改用 Intel runner 交叉编译 universal 包
           - name: macos-universal
-            os: macos-15
+            os: macos-15-intel
             target: universal-apple-darwin
             rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
             bundles: app,dmg
