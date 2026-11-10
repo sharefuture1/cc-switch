@@ -73,6 +73,56 @@
 - Gemini CLI 在未受信任目录的非交互模式下需要 `--skip-trust` / `GEMINI_CLI_TRUST_WORKSPACE=true`，或在交互模式里信任该目录；应用目前不改用户的信任设置（P2 可在界面加提示）。
 - 背景里仍显示上游 “Claude Official” 卡片（P2 隐藏）。
 
+## 2c. GitHub Actions 自动构建安装包
+
+工作流：`.github/workflows/wendingai-build.yml`（名称 “WendingAI Build”）。
+
+触发：
+- push 到 `wendingai` 分支：自动构建，安装包作为 workflow artifacts 上传（保留 30 天）
+- push tag `wendingai-v*`：同上，另外在 sharefuture1/cc-switch 创建 **草稿 + 预发布** Release，附全部安装包和 `SHA256SUMS.txt`（不会自动发布，需要人工点 Publish）
+- Actions 页面手动 `Run workflow`
+
+流程：`checks`（typecheck、format:check、全部前端单测、build:renderer、`scripts/check-brand.sh`）通过后，并行打包：
+
+| 任务 | Runner | 产物 |
+| --- | --- | --- |
+| windows-x64 | windows-2022 | `WendingAI-Switch-<版本>-Windows-x64-setup.exe`（NSIS）、`-Windows-x64.msi` |
+| macos-universal | macos-15-intel（交叉编译 universal，Apple Silicon + Intel） | `-macOS-universal.dmg`、`-macOS-universal.app.tar.gz` |
+| linux-x64 | ubuntu-22.04 | `-Linux-x64.deb` / `.AppImage` / `.rpm` |
+| linux-arm64 | ubuntu-22.04-arm | `-Linux-arm64.deb` / `.AppImage` / `.rpm` |
+
+版本号：tag 构建用 tag 去掉 `wendingai-v` 前缀；分支构建用 `package.json` 版本 + 短 commit。
+缓存：pnpm store（setup-node）+ Rust（Swatinem/rust-cache，按平台分 key）。
+macOS arm64 托管 runner 经常因容量排不上（首次运行等待 15 分钟后被取消），所以改用 Intel runner 交叉编译 universal 包，耗时较长（约 1.5 小时），超时设为 150 分钟。
+
+上游工作流：`release.yml` 改为只能手动触发（不再响应 `v*` tag），`sync-r2.yml` 任务 `if: false`；其余上游工作流（claude / stale / labeler / schema-version / wsl2-nightly / ci）只响应 main 或 PR / 定时事件，在 fork 上没有注册，也不会对 wendingai 分支运行。
+
+### 签名 Secrets（Settings → Secrets and variables → Actions）
+
+全部可选。缺少时生成未签名安装包；添加后下一次构建自动启用，无需改工作流。
+
+| Secret | 用途 |
+| --- | --- |
+| `APPLE_CERTIFICATE` | Developer ID Application 证书 .p12 的 base64 |
+| `APPLE_CERTIFICATE_PASSWORD` | .p12 密码 |
+| `APPLE_SIGNING_IDENTITY` | 例如 `Developer ID Application: WendingAI (TEAMID)` |
+| `APPLE_ID` / `APPLE_PASSWORD` / `APPLE_TEAM_ID` | 公证：Apple ID、App 专用密码、Team ID（三者齐全才公证） |
+| `WINDOWS_CERTIFICATE` | Authenticode 代码签名证书 .pfx 的 base64 |
+| `WINDOWS_CERTIFICATE_PASSWORD` | .pfx 密码 |
+| `TAURI_SIGNING_PRIVATE_KEY` / `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Tauri 更新包签名（应用内更新仍关闭，`createUpdaterArtifacts=false`；搭好自有更新源后再开） |
+
+未签名时用户会看到：
+- macOS：安装包是 ad-hoc 签名、未公证。首次打开提示“无法验证开发者 / 无法打开”。处理：在“系统设置 → 隐私与安全性”底部点“仍要打开”；或执行 `xattr -dr com.apple.quarantine "/Applications/WendingAI Switch.app"`。
+- Windows：SmartScreen 提示“Windows 已保护你的电脑”。处理：点“更多信息 → 仍要运行”。MSI / NSIS 安装时发布者显示为“未知”。
+- Linux：无需签名；AppImage 需 `chmod +x` 后运行。
+
+### 发版步骤
+
+1. 在 `wendingai` 分支更新版本号（`package.json`、`src-tauri/Cargo.toml`、`src-tauri/tauri.conf.json`），提交并推送。
+2. 打 tag 并推送：`git tag wendingai-v4.0.29 && git push origin wendingai-v4.0.29`。
+3. 等 “WendingAI Build” 跑完，到 Releases 页面检查草稿（全部安装包 + SHA256SUMS.txt），编辑说明后手动 Publish。
+4. 如需重跑同一 tag：在 Actions 里 Re-run；已存在的草稿会用 `--clobber` 覆盖同名文件。
+
 ## 3. 安全说明
 - Key 明文存储（与上游一致）：`~/.wendingai/cc-switch.db`（SQLite）以及各 CLI 自己的配置文件（`~/.claude/settings.json`、`~/.codex/auth.json`、`~/.gemini/.env`）。CLI 本身需要明文读取。界面只显示打码 Key（≤12 位整串隐藏）。
 - deeplink 只注册 `wendingai://`；解析器仍兼容 `ccswitch://` 格式（仅手动 / 测试）。
