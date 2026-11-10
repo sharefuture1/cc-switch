@@ -1,10 +1,8 @@
 name: Release
 
+# WendingAI：上游发布流程（依赖上游签名证书、R2 与更新清单）在本分支停用，
+# 安装包由 .github/workflows/wendingai-build.yml 构建。保留文件以便与上游合并。
 on:
-  push:
-    tags:
-      - 'v*'
-  # 手动触发即干跑：完整编译、签名、公证，产物只留在 workflow 里，不建 GitHub Release
   workflow_dispatch:
 
 permissions:

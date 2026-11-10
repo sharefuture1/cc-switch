@@ -1,0 +1,290 @@
+# WendingAI Switch：自动构建 Windows / macOS / Linux 安装包
+#
+# 触发：
+#   - push 到 wendingai 分支：构建并上传 workflow artifacts
+#   - 推 tag wendingai-v*：另外在本仓库创建「草稿 + 预发布」Release 并附上全部安装包（不会自动发布）
+#   - 手动 workflow_dispatch
+#
+# 签名（全部可选，缺少对应 Secret 时生成未签名安装包）：
+#   macOS 签名：APPLE_CERTIFICATE（.p12 的 base64）、APPLE_CERTIFICATE_PASSWORD、APPLE_SIGNING_IDENTITY
+#   macOS 公证：APPLE_ID、APPLE_PASSWORD（App 专用密码）、APPLE_TEAM_ID
+#   Windows 签名：WINDOWS_CERTIFICATE（.pfx 的 base64）、WINDOWS_CERTIFICATE_PASSWORD
+#   Tauri 更新签名：TAURI_SIGNING_PRIVATE_KEY、TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+#     （应用内更新目前关闭，createUpdaterArtifacts=false；配好自有更新源后再启用）
+name: WendingAI Build
+
+on:
+  push:
+    branches: [wendingai]
+    tags: ["wendingai-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wendingai-build-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+
+jobs:
+  checks:
+    name: Checks (typecheck, unit tests, brand)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Format check
+        run: pnpm format:check
+      - name: Frontend unit tests
+        run: pnpm test:unit
+      - name: Build frontend
+        run: pnpm build:renderer
+      - name: Brand check
+        run: bash scripts/check-brand.sh dist
+
+  build:
+    name: Build (${{ matrix.name }})
+    needs: checks
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-x64
+            os: windows-2022
+            bundles: nsis,msi
+          - name: macos-universal
+            os: macos-15
+            target: universal-apple-darwin
+            rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
+            bundles: app,dmg
+          - name: linux-x64
+            os: ubuntu-22.04
+            bundles: deb,appimage,rpm
+          - name: linux-arm64
+            os: ubuntu-22.04-arm
+            bundles: deb,appimage,rpm
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Read pinned Rust toolchain
+        id: rust
+        shell: bash
+        run: |
+          channel=$(sed -nE 's/^channel *= *"([^"]+)".*/\1/p' rust-toolchain.toml)
+          test -n "$channel"
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ steps.rust.outputs.channel }}
+          targets: ${{ matrix.rust_targets || '' }}
+      - name: Add Rust targets for pinned toolchain
+        if: matrix.rust_targets
+        shell: bash
+        run: |
+          for t in $(echo "${{ matrix.rust_targets }}" | tr ',' ' '); do rustup target add "$t"; done
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          key: ${{ matrix.name }}
+
+      - name: Install Linux system deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config file patchelf libssl-dev rpm xdg-utils \
+            libgtk-3-dev librsvg2-dev libayatana-appindicator3-dev \
+            libwebkit2gtk-4.1-dev libsoup-3.0-dev libxdo-dev
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # ── 可选签名：只有配置了 Secret 才启用 ───────────────────────────
+      - name: Configure macOS signing (optional)
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          if [ -n "$APPLE_CERTIFICATE" ] && [ -n "$APPLE_SIGNING_IDENTITY" ]; then
+            echo "macOS: Developer ID signing enabled"
+            {
+              echo "APPLE_CERTIFICATE<<__EOF__"; echo "$APPLE_CERTIFICATE"; echo "__EOF__"
+              echo "APPLE_CERTIFICATE_PASSWORD=$APPLE_CERTIFICATE_PASSWORD"
+              echo "APPLE_SIGNING_IDENTITY=$APPLE_SIGNING_IDENTITY"
+            } >> "$GITHUB_ENV"
+            if [ -n "$APPLE_ID" ] && [ -n "$APPLE_PASSWORD" ] && [ -n "$APPLE_TEAM_ID" ]; then
+              echo "macOS: notarization enabled"
+              {
+                echo "APPLE_ID=$APPLE_ID"
+                echo "APPLE_PASSWORD=$APPLE_PASSWORD"
+                echo "APPLE_TEAM_ID=$APPLE_TEAM_ID"
+              } >> "$GITHUB_ENV"
+            fi
+          else
+            # 没有证书：ad-hoc 签名（不是 Developer ID，用户首次打开需手动放行）
+            echo "macOS: no certificate secrets, using ad-hoc signing"
+            echo "APPLE_SIGNING_IDENTITY=-" >> "$GITHUB_ENV"
+          fi
+
+      - name: Configure Windows signing (optional)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ([string]::IsNullOrEmpty($env:WINDOWS_CERTIFICATE)) {
+            Write-Host "Windows: no certificate secrets, building unsigned installers"
+            "TAURI_EXTRA_CONFIG=" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+            exit 0
+          }
+          $pfx = Join-Path $env:RUNNER_TEMP 'cert.pfx'
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE))
+          $pwd = ConvertTo-SecureString -String $env:WINDOWS_CERTIFICATE_PASSWORD -AsPlainText -Force
+          $cert = Import-PfxCertificate -FilePath $pfx -CertStoreLocation Cert:\CurrentUser\My -Password $pwd
+          Remove-Item $pfx
+          $cfg = @{ bundle = @{ windows = @{ certificateThumbprint = $cert.Thumbprint; digestAlgorithm = 'sha256'; timestampUrl = 'http://timestamp.digicert.com' } } } | ConvertTo-Json -Compress -Depth 5
+          $cfgPath = Join-Path $env:RUNNER_TEMP 'tauri.signing.json'
+          Set-Content -Path $cfgPath -Value $cfg -Encoding utf8
+          "TAURI_EXTRA_CONFIG=$cfgPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "Windows: Authenticode signing enabled"
+
+      - name: Configure Tauri updater key (optional)
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          # 应用内更新关闭（createUpdaterArtifacts=false），这里只是为以后启用预留
+          if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            {
+              echo "TAURI_SIGNING_PRIVATE_KEY<<__EOF__"; echo "$TAURI_SIGNING_PRIVATE_KEY"; echo "__EOF__"
+              echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=$TAURI_SIGNING_PRIVATE_KEY_PASSWORD"
+            } >> "$GITHUB_ENV"
+            echo "Tauri updater key present"
+          else
+            echo "Tauri updater key not set (updater disabled)"
+          fi
+
+      # ── 构建 ────────────────────────────────────────────────────────
+      - name: Build installers
+        shell: bash
+        env:
+          LINUXDEPLOY_EXCLUDED_LIBRARIES: "libwayland-client.so*"
+        run: |
+          set -euo pipefail
+          args=(--bundles "${{ matrix.bundles }}")
+          if [ -n "${{ matrix.target }}" ]; then args+=(--target "${{ matrix.target }}"); fi
+          if [ -n "${TAURI_EXTRA_CONFIG:-}" ]; then args+=(--config "$TAURI_EXTRA_CONFIG"); fi
+          pnpm tauri build "${args[@]}"
+
+      - name: Collect installers
+        id: collect
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            version="${GITHUB_REF_NAME#wendingai-v}"
+          else
+            version="$(node -p "require('./package.json').version")-${GITHUB_SHA::7}"
+          fi
+          root=src-tauri/target
+          [ -n "${{ matrix.target }}" ] && root="$root/${{ matrix.target }}"
+          bundle="$root/release/bundle"
+          out=dist-installers
+          mkdir -p "$out"
+          base="WendingAI-Switch-${version}"
+          shopt -s nullglob
+          case "${{ matrix.name }}" in
+            windows-x64)
+              for f in "$bundle"/nsis/*.exe; do cp "$f" "$out/${base}-Windows-x64-setup.exe"; done
+              for f in "$bundle"/msi/*.msi; do cp "$f" "$out/${base}-Windows-x64.msi"; done
+              ;;
+            macos-universal)
+              for f in "$bundle"/dmg/*.dmg; do cp "$f" "$out/${base}-macOS-universal.dmg"; done
+              for d in "$bundle"/macos/*.app; do
+                tar -czf "$out/${base}-macOS-universal.app.tar.gz" -C "$(dirname "$d")" "$(basename "$d")"
+              done
+              ;;
+            linux-*)
+              arch="${{ matrix.name }}"; arch="${arch#linux-}"
+              for f in "$bundle"/deb/*.deb; do cp "$f" "$out/${base}-Linux-${arch}.deb"; done
+              for f in "$bundle"/appimage/*.AppImage; do cp "$f" "$out/${base}-Linux-${arch}.AppImage"; done
+              for f in "$bundle"/rpm/*.rpm; do cp "$f" "$out/${base}-Linux-${arch}.rpm"; done
+              ;;
+          esac
+          ls -la "$out"
+          test -n "$(ls -A "$out")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WendingAI-Switch-${{ steps.collect.outputs.version }}-${{ matrix.name }}
+          path: dist-installers/*
+          if-no-files-found: error
+          retention-days: 30
+
+  draft-release:
+    name: Draft pre-release (tag only)
+    if: github.ref_type == 'tag' && startsWith(github.ref_name, 'wendingai-v')
+    needs: build
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: installers
+          merge-multiple: true
+      - name: Checksums
+        run: |
+          cd installers
+          sha256sum * > SHA256SUMS.txt
+          ls -la
+      - name: Create draft pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          version="${TAG#wendingai-v}"
+          notes="WendingAI Switch ${version}（草稿，未发布）
+
+          安装包未做代码签名：
+          - macOS：首次打开若提示无法验证开发者，请在「系统设置 → 隐私与安全性」中点「仍要打开」，或执行 xattr -dr com.apple.quarantine \"/Applications/WendingAI Switch.app\"
+          - Windows：SmartScreen 提示时点「更多信息 → 仍要运行」
+
+          基于 CC Switch（MIT License，Copyright (c) 2025 Jason Young）。"
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" installers/* --clobber -R "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" installers/* -R "$GITHUB_REPOSITORY" \
+              --draft --prerelease --verify-tag \
+              --title "WendingAI Switch ${version}" --notes "$notes"
+          fi
