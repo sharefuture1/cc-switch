@@ -1305,7 +1305,7 @@ wire_api = "responses"
 requires_openai_auth = true
 "#;
     // The residue is the row's own key: only a key some third-party row
-    // carries is provably CC Switch's to delete (a user's own
+    // carries is provably WendingAI Switch's to delete (a user's own
     // `codex login --api-key` login is left alone).
     let live_auth = json!({ "OPENAI_API_KEY": "old-db-key" });
     write_codex_live_atomic(&live_auth, Some(third_party_config))
@@ -2635,7 +2635,7 @@ fn switch_claude_moves_compat_switches_with_their_provider() {
     ProviderService::switch(&state, AppType::Claude, "deepseek").expect("back to deepseek");
     assert_eq!(claude_live(), deepseek);
 
-    // 用户在 live 里手动改成了 0：不是 CC Switch 写的，切走时保留。
+    // 用户在 live 里手动改成了 0：不是 WendingAI Switch 写的，切走时保留。
     let mut edited = claude_live();
     edited["env"]["CLAUDE_CODE_DISABLE_ARTIFACT"] = json!("0");
     std::fs::write(get_claude_settings_path(), edited.to_string()).expect("edit live");
@@ -3228,7 +3228,7 @@ fn claude_editor_global_settings_reach_account_dirs() {
     );
 
     // 本机账号表里有一个账号，目录已经建好
-    let app_dir = home.join(".cc-switch");
+    let app_dir = home.join(cc_switch_lib::brand::DATA_DIR_NAME);
     let local_id = "0123456789abcdef0123456789abcdef";
     let config_dir = app_dir
         .join("claude-accounts")
@@ -3672,7 +3672,11 @@ fn claude_editor_never_leaves_the_row_and_live_apart() {
     let (row, base) = open_claude_editor(&state, "a");
     let mut edited = base.clone();
     edited["env"]["ANTHROPIC_AUTH_TOKEN"] = json!("sk-new");
-    let db = rusqlite::Connection::open(home.join(".cc-switch/cc-switch.db")).expect("open db");
+    let db = rusqlite::Connection::open(
+        home.join(cc_switch_lib::brand::DATA_DIR_NAME)
+            .join("cc-switch.db"),
+    )
+    .expect("open db");
     db.execute_batch(
         "CREATE TRIGGER fail_edit BEFORE UPDATE OF settings_config ON providers \
          BEGIN SELECT RAISE(ABORT, 'injected save failure'); END;",

@@ -408,7 +408,7 @@ pub enum ClaudeDesktopMode {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ClaudeDesktopModelRoute {
-    /// 真实上游模型名，只保存在 CC Switch 内部，不写入 Claude Desktop profile。
+    /// 真实上游模型名，只保存在 WendingAI Switch 内部，不写入 Claude Desktop profile。
     pub model: String,
     /// Claude Desktop 模型菜单显示名；写入 profile 的 `labelOverride`。
     #[serde(rename = "labelOverride", skip_serializing_if = "Option::is_none")]
@@ -931,6 +931,13 @@ impl UniversalProvider {
             base_trimmed.to_string()
         };
 
+        // WendingAI：Codex 配置里的供应商显示名用品牌名
+        let provider_label = if self.provider_type == crate::brand::PROVIDER_TYPE {
+            crate::brand::BRAND_NAME
+        } else {
+            "NewAPI"
+        };
+
         // 生成 Codex 的 config.toml 内容
         let config_toml = format!(
             r#"model_provider = "custom"
@@ -938,7 +945,7 @@ model = "{model}"
 model_reasoning_effort = "{reasoning_effort}"
 
 [model_providers.custom]
-name = "NewAPI"
+name = "{provider_label}"
 base_url = "{codex_base_url}"
 wire_api = "responses"
 requires_openai_auth = true"#

@@ -19,9 +19,11 @@ pub fn parse_deeplink_url(url_str: &str) -> Result<DeepLinkImportRequest, AppErr
 
     // Validate scheme
     let scheme = url.scheme();
-    if scheme != "ccswitch" {
+    // WendingAI：系统只把 wendingai:// 注册给本应用；保留对上游 ccswitch:// 的解析兼容（测试与手动粘贴）
+    if scheme != crate::brand::DEEPLINK_SCHEME && scheme != "ccswitch" {
         return Err(AppError::InvalidInput(format!(
-            "Invalid scheme: expected 'ccswitch', got '{scheme}'"
+            "Invalid scheme: expected '{}', got '{scheme}'",
+            crate::brand::DEEPLINK_SCHEME
         )));
     }
 

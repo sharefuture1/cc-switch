@@ -70,7 +70,7 @@ fn is_opencode_upstream(upstream_host: Option<&str>) -> bool {
 ///
 /// The gateway uses the session id for upstream routing and prompt caching, so
 /// it must not change between the turns of a conversation. Claude Desktop hands
-/// CC Switch a fresh id on every request, which defeats that; hashing the
+/// WendingAI Switch a fresh id on every request, which defeats that; hashing the
 /// conversation prefix keeps the id stable while still separating conversations.
 fn conversation_fingerprint(body: &Value) -> Option<String> {
     let mut hasher = Sha256::new();
@@ -2068,8 +2068,8 @@ impl RequestForwarder {
 
         // Codex 远程压缩，以及同一线程里别家回合留下的状态（见 `codex_compaction`）。
         // Chat / Anthropic 转换在转换器里处理；这里管原样转发的两种上游：官方清掉
-        // CC Switch 产出、官方一定会拒的条目，原生 Responses 第三方把压缩触发和
-        // CC Switch 包装的压缩摘要改成普通消息。看不出来源的密文原样发出，被拒后由
+        // WendingAI Switch 产出、官方一定会拒的条目，原生 Responses 第三方把压缩触发和
+        // WendingAI Switch 包装的压缩摘要改成普通消息。看不出来源的密文原样发出，被拒后由
         // `opaque_state_rectifier` 处理。请求里没有这些条目时逐字节不变。
         if matches!(app_type, AppType::Codex)
             && !codex_responses_to_chat
@@ -3789,7 +3789,7 @@ fn is_codex_client_fingerprint_header(key_str: &str) -> bool {
 /// continue to receive a clean client fingerprint.
 ///
 /// Any other Codex request to a third party (`codex_unmanaged_upstream`: Codex and
-/// not a CC Switch-managed ChatGPT account) drops only the ChatGPT account identity
+/// not a WendingAI Switch-managed ChatGPT account) drops only the ChatGPT account identity
 /// ([`is_chatgpt_identity_header`]): the client may be the built-in `openai`
 /// provider carrying the user's ChatGPT login. Session and client headers stay,
 /// so requests from a plain custom table are unchanged.

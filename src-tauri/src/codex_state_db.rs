@@ -71,7 +71,7 @@ pub(crate) fn count_threads_with_model_provider(
     total
 }
 
-/// Whether CC Switch can open this state DB with SQLite locking intact.
+/// Whether WendingAI Switch can open this state DB with SQLite locking intact.
 ///
 /// Windows reaches a WSL distro's files through the `\\wsl$` /
 /// `\\wsl.localhost` 9P redirector, which has no byte-range locks: every open

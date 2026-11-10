@@ -1,10 +1,10 @@
 [package]
-name = "cc-switch"
+name = "wendingai-switch"
 version = "4.0.28"
-description = "All-in-One Assistant for Claude Code, Codex & Gemini CLI"
-authors = ["Jason Young"]
+description = "WendingAI Switch - one-key setup for Claude Code, Codex & Gemini CLI"
+authors = ["WendingAI", "Jason Young (original CC Switch)"]
 license = "MIT"
-repository = "https://github.com/farion1231/cc-switch"
+repository = "https://github.com/sharefuture1/cc-switch"
 edition = "2021"
 rust-version = "1.85.0"
 

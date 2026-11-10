@@ -40,7 +40,7 @@ pub(crate) enum PiChange<'a> {
     Enable(&'a Value),
     /// 取消勾选：只标 `enabled: false`，保留条目和 Pi 自己的设置，重新勾选时原样恢复
     Disable,
-    /// 从 CC Switch 删除服务器：删掉条目
+    /// 从 WendingAI Switch 删除服务器：删掉条目
     Remove,
 }
 
@@ -141,7 +141,7 @@ fn validate_change(id: &str, change: PiChange<'_>) -> Result<(), AppError> {
     }
 }
 
-/// CC Switch 的统一格式 → 写进 Pi 的连接字段。SSE 直接拒绝
+/// WendingAI Switch 的统一格式 → 写进 Pi 的连接字段。SSE 直接拒绝
 fn native_transport(spec: &Value) -> Result<Value, AppError> {
     super::validation::validate_server_spec(spec)?;
     if spec.get("type").and_then(Value::as_str) == Some("sse") {
@@ -168,7 +168,7 @@ pub fn sync(id: &str, spec: Option<&Value>) -> Result<(), AppError> {
     }
 }
 
-/// 删除服务器时清掉 Pi 里由 CC Switch 写入、后来被取消勾选的条目：
+/// 删除服务器时清掉 Pi 里由 WendingAI Switch 写入、后来被取消勾选的条目：
 /// 只删 `enabled: false` 且连接方式和这个服务器一致的同名条目，用户自己的同名条目不动
 pub(crate) fn remove_disabled_if_managed(id: &str, spec: &Value) -> Result<(), AppError> {
     let _guard = WRITE_LOCK
@@ -349,7 +349,7 @@ fn pi_fields(spec: &Value) -> Value {
     Value::Object(fields)
 }
 
-/// Pi 的条目 → CC Switch 的统一格式：`streamable-http` 记作 `http`，省略的 `type` 按字段补上
+/// Pi 的条目 → WendingAI Switch 的统一格式：`streamable-http` 记作 `http`，省略的 `type` 按字段补上
 pub(crate) fn unified_spec(native: &Value) -> Value {
     let mut spec = native.clone();
     if spec["type"] == "streamable-http"

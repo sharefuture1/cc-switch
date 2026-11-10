@@ -4,7 +4,7 @@
 //! - macOS：钥匙串 generic password，service 见 [`Slot::keychain_service`]，内容是凭据 JSON；
 //! - 其他平台：槽位目录里的 `.credentials.json`（0600）。
 //!
-//! 凭据只在内存里经过（[`Secret`] 不实现可打印的 `Debug`），不落到 CC Switch 自己的任何文件。
+//! 凭据只在内存里经过（[`Secret`] 不实现可打印的 `Debug`），不落到 WendingAI Switch 自己的任何文件。
 
 use std::path::{Path, PathBuf};
 

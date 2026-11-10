@@ -22,11 +22,15 @@ enum BalanceProvider {
     SiliconFlowEn,
     OpenRouter,
     NovitaAI,
+    /// WendingAI（new-api）：见 `services::wending_quota`
+    WendingAI,
 }
 
 fn detect_provider(base_url: &str) -> Option<BalanceProvider> {
     let url = base_url.to_lowercase();
-    if url.contains("api.deepseek.com") {
+    if crate::brand::is_wending_url(base_url) {
+        Some(BalanceProvider::WendingAI)
+    } else if url.contains("api.deepseek.com") {
         Some(BalanceProvider::DeepSeek)
     } else if url.contains("api.stepfun.ai") || url.contains("api.stepfun.com") {
         Some(BalanceProvider::StepFun)
@@ -569,6 +573,9 @@ pub async fn get_balance(base_url: &str, api_key: &str) -> Result<UsageResult, S
         BalanceProvider::SiliconFlowEn => query_siliconflow(api_key, false).await,
         BalanceProvider::OpenRouter => query_openrouter(api_key).await,
         BalanceProvider::NovitaAI => query_novita(api_key).await,
+        BalanceProvider::WendingAI => {
+            crate::services::wending_quota::query(base_url, api_key).await
+        }
     }
 }
 

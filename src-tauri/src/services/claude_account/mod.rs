@@ -500,7 +500,7 @@ impl ClaudeAccountManager {
         .unwrap_or_default()
     }
 
-    /// 从 CC Switch 删掉这个账号：删目录和钥匙串里的条目。不吊销、不登出，服务端的令牌到期自然失效。
+    /// 从 WendingAI Switch 删掉这个账号：删目录和钥匙串里的条目。不吊销、不登出，服务端的令牌到期自然失效。
     pub async fn remove(&self, account_id: &str) -> Result<(), AppError> {
         let mut store = self.store.lock().await;
         let file = store_file_guard();
@@ -541,7 +541,7 @@ impl ClaudeAccountManager {
         config_dir_on_disk(&self.data_dir, account_id)
     }
 
-    /// 本机全部账号目录（不管存不存在）：判断 live 里的 `CLAUDE_CONFIG_DIR` 是不是 CC Switch 写的。
+    /// 本机全部账号目录（不管存不存在）：判断 live 里的 `CLAUDE_CONFIG_DIR` 是不是 WendingAI Switch 写的。
     pub async fn all_config_dirs(&self) -> Vec<PathBuf> {
         load_store(&self.data_dir)
             .accounts

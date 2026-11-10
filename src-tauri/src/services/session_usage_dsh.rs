@@ -57,7 +57,7 @@ pub(crate) const DSH_APP_TYPE: &str = "dsh";
 
 /// `session_usage_dedup` / `proxy_request_logs.data_source` 里的来源标识。
 const DSH_DATA_SOURCE: &str = "dsh_session";
-/// 占位供应商 ID：会话日志不知道用户在 CC Switch 里建过哪张卡，和其余应用一致。
+/// 占位供应商 ID：会话日志不知道用户在 WendingAI Switch 里建过哪张卡，和其余应用一致。
 const DSH_PROVIDER_ID: &str = "_dsh_session";
 /// `provider_type`：详情面板里标明这条记录来自会话日志导入。
 const DSH_PROVIDER_TYPE: &str = "dsh_session";

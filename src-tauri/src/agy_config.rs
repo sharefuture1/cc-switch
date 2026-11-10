@@ -1,7 +1,7 @@
 //! Antigravity CLI (`agy`) 的 live 配置。
 //!
 //! `agy` 只从进程环境读取 `GEMINI_API_KEY` 和 `GOOGLE_GEMINI_BASE_URL`，`settings.json`
-//! 只负责 `modelProvider` 和 `model`（只认显示名）。CC Switch 管不到用户自己敲的 `agy`，
+//! 只负责 `modelProvider` 和 `model`（只认显示名）。WendingAI Switch 管不到用户自己敲的 `agy`，
 //! 所以卡片没有「启用」，只有「打开终端」，每张卡只作用于它打开的那个终端：
 //!
 //! - **官方登录卡**：`agy --model=<显示名>`（没设模型就是 `agy`），模型只对这次会话生效。
@@ -160,7 +160,7 @@ fn key_profile_patch(projection: &AgyProjection) -> JsonPatch {
 }
 
 /// 撤掉 #8268 测试版写进真实 `settings.json` 的 `modelProvider`，模型和其余键不动。
-/// 这是 CC Switch 对真实 `settings.json` 唯一的写入。
+/// 这是 WendingAI Switch 对真实 `settings.json` 唯一的写入。
 pub(crate) fn release_model_provider(
     db: &crate::database::Database,
 ) -> Result<crate::mode::operation::OperationReport, AppError> {

@@ -1,9 +1,9 @@
 //! 账号目录的布局：`<app_config_dir>/claude-accounts/<local_id>/`。
 //!
 //! - `config/` 是这个账号的 `CLAUDE_CONFIG_DIR`，里面的东西全归 Claude Code（凭据、
-//!   `.claude.json`、会话缓存……），CC Switch 只建目录、接共享层、删目录。
+//!   `.claude.json`、会话缓存……），WendingAI Switch 只建目录、接共享层、删目录。
 //! - `.open-url`（macOS / Linux）是登录时交给 Claude Code 的 `BROWSER`：只把要打开的地址
-//!   写进同目录的 `.opened-url`，由 CC Switch 的窗口显示、打开。
+//!   写进同目录的 `.opened-url`，由 WendingAI Switch 的窗口显示、打开。
 //! - `.no-browser`（Windows，不存在的文件）是授权中心关了「登录时自动打开浏览器」时交给
 //!   Claude Code 的 `BROWSER`：让它打不开浏览器，只打印链接。
 //!
@@ -53,7 +53,7 @@ pub fn valid_local_id(local_id: &str) -> bool {
 }
 
 /// 交给 Claude Code 之前的最后一道检查：必须是账号根下的绝对路径，且不是用户自己的
-/// `~/.claude`（那是「默认登录」，CC Switch 绝不把它当账号目录）。
+/// `~/.claude`（那是「默认登录」，WendingAI Switch 绝不把它当账号目录）。
 pub fn assert_config_dir(data_dir: &Path, dir: &Path) -> Result<(), AppError> {
     let text = dir.to_string_lossy();
     if text.trim().is_empty() || !dir.is_absolute() {
@@ -73,7 +73,7 @@ pub fn assert_config_dir(data_dir: &Path, dir: &Path) -> Result<(), AppError> {
     }
     if !dir.starts_with(accounts_root(data_dir)) {
         return Err(AppError::Message(format!(
-            "账号目录不在 CC Switch 的账号根下: {}",
+            "账号目录不在 WendingAI Switch 的账号根下: {}",
             dir.display()
         )));
     }
@@ -97,8 +97,8 @@ fn same_path(a: &Path, b: &Path) -> bool {
     }
 }
 
-/// `value` 是不是某个账号目录（CC Switch 写进 `settings.json` 的 `CLAUDE_CONFIG_DIR`）。
-/// 用来判断 live 里的这个值归不归 CC Switch：不是的话一律不碰。
+/// `value` 是不是某个账号目录（WendingAI Switch 写进 `settings.json` 的 `CLAUDE_CONFIG_DIR`）。
+/// 用来判断 live 里的这个值归不归 WendingAI Switch：不是的话一律不碰。
 pub fn is_account_config_dir(data_dir: &Path, value: &str) -> bool {
     let path = Path::new(value.trim());
     let Ok(rest) = path.strip_prefix(accounts_root(data_dir)) else {
@@ -116,7 +116,7 @@ pub fn is_account_config_dir(data_dir: &Path, value: &str) -> bool {
 /// Claude Code 在 macOS 钥匙串里存这个目录登录的 service 名。
 ///
 /// 和 Claude Code 一致：对传给它的 `CLAUDE_CONFIG_DIR` 原字符串做 NFC，再取 sha256 的前
-/// 8 位 hex。这里的目录都由 CC Switch 生成（`<数据目录>/claude-accounts/<hex>/config`），
+/// 8 位 hex。这里的目录都由 WendingAI Switch 生成（`<数据目录>/claude-accounts/<hex>/config`），
 /// 数据目录是纯 ASCII 时 NFC 不改变任何字节；含非 ASCII 字符时按原样计算，可能对不上，
 /// 只影响删账号时能不能顺手删掉钥匙串里的条目。
 pub fn keychain_service(config_dir: &Path) -> String {

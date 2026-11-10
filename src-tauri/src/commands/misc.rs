@@ -1675,7 +1675,7 @@ async fn fetch_github_latest_version(client: &reqwest::Client, repo: &str) -> Op
     let url = format!("https://api.github.com/repos/{repo}/releases/latest");
     let resp = client
         .get(&url)
-        .header("User-Agent", "cc-switch")
+        .header("User-Agent", crate::brand::USER_AGENT)
         .header("Accept", "application/vnd.github+json")
         .timeout(LATEST_PROBE_TIMEOUT)
         .send()
@@ -2523,7 +2523,7 @@ fn effective_path_string() -> String {
 
 /// fnm only puts Node on PATH through `fnm env`, which prepends a per-shell
 /// `%LOCALAPPDATA%\fnm_multishells\<id>` link to that shell's PATH. Nothing is
-/// written to the registry PATH, so a GUI-launched CC Switch sees neither node,
+/// written to the registry PATH, so a GUI-launched WendingAI Switch sees neither node,
 /// npm nor the npm global CLIs (#8484, #6991). `<fnm dir>\aliases\default` is a
 /// stable link to the default Node installation; on Windows node.exe, npm.cmd
 /// and npm global commands live directly in that directory (no `bin`).
@@ -5513,7 +5513,7 @@ impl ProviderLaunch {
         self.batch_command.push_str(flag);
     }
 
-    /// 用户在「打开终端」里填的附加参数，接在 CC Switch 生成的参数后面，同样只给这一次。
+    /// 用户在「打开终端」里填的附加参数，接在 WendingAI Switch 生成的参数后面，同样只给这一次。
     /// Windows 上每个参数经 .bat 变量传、用引号包住，cmd 的 `&`、`|` 之类不会接出别的命令。
     fn append_user_args(&mut self, args: Vec<String>) -> Result<(), String> {
         // Codex 的启动行带 `call`：`%` 会再展开一遍、引号里的 `^` 会加倍，和 `-c` 值同一条限制。
@@ -5699,7 +5699,7 @@ fn codex_launch(
 ///
 /// Grok CLI 没有只对一个进程换配置的办法：没有 `-c` 之类的覆盖参数，`GROK_CONFIG_PATH`
 /// 不生效（1.0.70 实测），`GROK_HOME` 会把会话、登录、技能一起换到别的目录。
-/// `GROK_HOME` 定到 CC Switch 管的目录（设置里可以改），Grok 读的就是这里写的那份。
+/// `GROK_HOME` 定到 WendingAI Switch 管的目录（设置里可以改），Grok 读的就是这里写的那份。
 fn grok_terminal_launch(
     db: &crate::database::Database,
     provider: &crate::provider::Provider,
@@ -6812,10 +6812,10 @@ fn run_windows_start_command(args: &[&str], terminal_name: &str) -> Result<(), S
     run_windows_start_command_with_env(args, terminal_name, &[])
 }
 
-/// 组装 `cmd /C start ...`。终端里跑的 `claude` 等命令按这里的 PATH 查找：CC Switch
+/// 组装 `cmd /C start ...`。终端里跑的 `claude` 等命令按这里的 PATH 查找：WendingAI Switch
 /// 被 MSI 自动重启后只剩机器级 PATH（#6061），或是在装 CLI 之前就已启动，进程 PATH
 /// 都会缺用户级条目（#3877、#8446）。和检测、生命周期命令（#8173）一样用补全后的 PATH，
-/// 只影响启动的终端，不改 CC Switch 自身的环境；Windows Terminal 从命令行开新标签时
+/// 只影响启动的终端，不改 WendingAI Switch 自身的环境；Windows Terminal 从命令行开新标签时
 /// 也沿用调用方的环境。
 #[cfg(target_os = "windows")]
 fn windows_start_command(

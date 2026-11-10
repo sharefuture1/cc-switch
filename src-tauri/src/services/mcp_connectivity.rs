@@ -55,7 +55,7 @@ static LOGIN_SHELL_PATH: Lazy<Option<String>> = Lazy::new(|| {
 pub enum ConnectivityStatus {
     Connected,
     /// The endpoint answered 401: reachable, but it wants the client's own
-    /// (often OAuth) sign-in, which CC Switch neither has nor reads.
+    /// (often OAuth) sign-in, which WendingAI Switch neither has nor reads.
     AuthRequired,
     Failed,
 }

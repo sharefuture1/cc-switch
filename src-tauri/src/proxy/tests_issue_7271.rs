@@ -1,6 +1,6 @@
 //! 复现测试：Issue #7271 - Claude(Anthropic) 路径未剥离 OpenAI Chat 上游内联的 `<think>` 块
 //!
-//! 复现 issue「方式 B」：Claude Code 的 provider 经 CC Switch 本地代理指向一个
+//! 复现 issue「方式 B」：Claude Code 的 provider 经 WendingAI Switch 本地代理指向一个
 //! OpenAI Chat 兼容上游（MiniMax M3 / OpenCode Go 形态），上游不返回
 //! `reasoning_content` 字段，而是把思考内联在 `message.content` / `delta.content`
 //! 文本前部（`<think>…</think>`）。期望代理转成 Anthropic 的 thinking 块；修复前
@@ -114,7 +114,7 @@ mod tests {
         (format!("http://{addr}"), captured)
     }
 
-    /// 建库（provider 走 OpenAI Chat 协议）+ 启动 CC Switch 代理
+    /// 建库（provider 走 OpenAI Chat 协议）+ 启动 WendingAI Switch 代理
     ///
     /// 返回值里必须带上 `ProxyServer` 本身：它持有 shutdown oneshot 的 sender，
     /// 一旦被 drop，服务器 accept 循环会立刻退出（请求表现为连接被重置）。

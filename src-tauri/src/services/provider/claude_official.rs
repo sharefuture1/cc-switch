@@ -8,7 +8,7 @@
 //!   新启动的 `claude` 都是这个号。设了 Claude 配置目录覆盖时不切，只能从卡片打开终端。
 //!
 //! 以前的开发版把 `CLAUDE_CONFIG_DIR` 写进过 `~/.claude/settings.json`（Claude Code 只在启动
-//! 环境里完整认它，写在 settings 里登录状态仍从默认目录读）。切换时照样删掉 CC Switch 写的值
+//! 环境里完整认它，写在 settings 里登录状态仍从默认目录读）。切换时照样删掉 WendingAI Switch 写的值
 //! （形如 `<数据目录>/claude-accounts/<id>/config`），用户自己写的不碰。
 
 use serde_json::Value;
@@ -47,7 +47,7 @@ fn config_dir_key() -> KeyPath {
     KeyPath::new(&["env"]).child(CONFIG_DIR_ENV)
 }
 
-/// live 里这个值是不是 CC Switch 写的账号目录。
+/// live 里这个值是不是 WendingAI Switch 写的账号目录。
 fn owned_by_cc_switch(value: &Value) -> bool {
     value.as_str().is_some_and(|text| {
         layout::is_account_config_dir(&crate::config::get_app_config_dir(), text)

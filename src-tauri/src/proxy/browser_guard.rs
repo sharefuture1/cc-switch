@@ -51,7 +51,7 @@ pub(super) async fn reject_browser_requests(
                 Json(json!({
                     "error": {
                         "type": "forbidden",
-                        "message": format!("CC Switch local proxy: {reason}"),
+                        "message": format!("WendingAI Switch local proxy: {reason}"),
                     }
                 })),
             )

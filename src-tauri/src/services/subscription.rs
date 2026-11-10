@@ -760,7 +760,7 @@ pub(crate) enum CodexKeychainLogin {
     /// 确定没有，或者内容不是 JSON（Codex 自己也读不了，auto 模式同样退回 `auth.json`）。
     #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     Missing,
-    /// 读不出来：不是 macOS（Windows、Linux 的凭据库 CC Switch 读不了），或者 macOS 上
+    /// 读不出来：不是 macOS（Windows、Linux 的凭据库 WendingAI Switch 读不了），或者 macOS 上
     /// 访问被拒。Codex 看到的可能是另一个登录，不能拿 `auth.json` 顶替。
     Unknown,
 }
@@ -1666,7 +1666,7 @@ async fn claude_quota_from(
 
 /// 绑了账号的 Claude 官方卡：按那个账号自己的登录查额度（在用的号读默认槽位，没在用的读它
 /// 的账号目录）。令牌有效就直接查；过期了（没在用的号放几个小时就会这样）在那个目录里跑一次
-/// `claude -p /usage`，由 Claude Code 自己刷新并缓存额度，再读它的缓存。CC Switch 不刷新令牌。
+/// `claude -p /usage`，由 Claude Code 自己刷新并缓存额度，再读它的缓存。WendingAI Switch 不刷新令牌。
 pub async fn get_claude_account_quota(
     data_dir: std::path::PathBuf,
     account: String,

@@ -2,7 +2,7 @@
 //!
 //! 这条命令由 Claude Code 自己回答、不问模型：它按自己的锁刷新令牌、查额度，把结果缓存进那个
 //! 目录 `.claude.json` 的 `cachedUsageUtilization`（和 `/api/oauth/usage` 的返回同一个结构），
-//! CC Switch 读这份缓存。CC Switch 自己从不刷新令牌。
+//! WendingAI Switch 读这份缓存。WendingAI Switch 自己从不刷新令牌。
 
 use std::collections::HashMap;
 use std::path::Path;

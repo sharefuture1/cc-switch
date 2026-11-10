@@ -1259,7 +1259,7 @@ mod tests {
         );
     }
 
-    /// 编辑当前供应商、去掉它的独有字段：live 里 CC Switch 写进去的那个值随之删掉，
+    /// 编辑当前供应商、去掉它的独有字段：live 里 WendingAI Switch 写进去的那个值随之删掉，
     /// 用户自己的键不动。
     #[tokio::test]
     #[serial]
@@ -5488,7 +5488,7 @@ impl ProviderService {
     ) -> Result<IndexMap<String, Provider>, AppError> {
         let _native_guard = lock_native_provider_operations(state, &app_type);
         if app_type == AppType::Dsh {
-            // A profile can appear while CC Switch is running. Keep the provider list usable
+            // A profile can appear while WendingAI Switch is running. Keep the provider list usable
             // when a native lock or an invalid profile prevents the initial sync; retry later.
             if let Err(error) = initialize_dsh_profiles(state) {
                 log::warn!("Initializing DeepSeek Harness profiles failed: {error}");
@@ -6584,7 +6584,7 @@ impl ProviderService {
                 state.db.delete_provider("kimi", id)
             })?;
             // The official node is already gone from Kimi (otherwise editing is
-            // refused above); its CC Switch-owned credential goes with the card.
+            // refused above); its WendingAI Switch-owned credential goes with the card.
             if let Some(saved) = saved {
                 if let Err(error) =
                     crate::services::kimi_oauth::forget_removed_profile(id, &saved.settings_config)

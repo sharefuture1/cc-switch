@@ -1021,7 +1021,7 @@ fn plan_gemini_tool_result(content: Option<&Value>) -> (Value, Vec<Value>) {
 }
 
 /// Thought signatures are replayed from the in-memory shadow store, so they are
-/// gone when CC Switch restarts mid tool-call turn or the turn has been evicted.
+/// gone when WendingAI Switch restarts mid tool-call turn or the turn has been evicted.
 /// Gemini 3+ then rejects the rebuilt request with "Function call is missing a
 /// thought_signature". Gemini only validates the first functionCall of each model
 /// step in the current turn (after the last user content that is not just

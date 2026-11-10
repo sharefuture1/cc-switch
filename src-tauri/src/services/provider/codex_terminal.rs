@@ -14,7 +14,7 @@
 //! 卡就是当前直连的那家时直接跑 `codex`：live 本来就是它，用户在 Codex 里选的模型和档位
 //! 也照用。官方卡和没有路由的卡跟着 Codex 自己的登录走，只对一个进程换不过去，要先切换；
 //! 路由模式下它们是当前路由时也直接跑 `codex`（请求经本地路由到它）。
-//! 每种启动都把 `CODEX_HOME` 定到 CC Switch 管的目录，Codex 读的就是这里检查过的那份。
+//! 每种启动都把 `CODEX_HOME` 定到 WendingAI Switch 管的目录，Codex 读的就是这里检查过的那份。
 
 use serde_json::Value;
 use toml_edit::{DocumentMut, Item, Table, TableLike, Value as TomlValue};
@@ -89,7 +89,7 @@ pub(crate) fn terminal_launch(
     } else {
         build(provider, &codex_direct::read_config_text())?
     };
-    // 检查的是 CC Switch 管的目录（设置里可以改），Codex 也得读这个目录，而不是默认的或
+    // 检查的是 WendingAI Switch 管的目录（设置里可以改），Codex 也得读这个目录，而不是默认的或
     // shell 里 CODEX_HOME 指的。
     launch.env.push((
         CODEX_HOME_ENV,

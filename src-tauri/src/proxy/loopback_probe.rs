@@ -2,8 +2,8 @@
 //!
 //! Codex、Grok Build 用 reqwest 发请求，会跟随系统代理：macOS 不读「不使用代理的主机」，
 //! Windows 读绕过列表但不认 `127.*` 这类写法。发往 `127.0.0.1` 的请求因此可能被送进
-//! Clash 一类的代理，规则把它分给远端节点时就回一个空正文 502，CC Switch 这边一行日志
-//! 都没有（#4789、#8611、#9221）。CC Switch 用的是同一个网络库，照同样的规则走一遍，
+//! Clash 一类的代理，规则把它分给远端节点时就回一个空正文 502，WendingAI Switch 这边一行日志
+//! 都没有（#4789、#8611、#9221）。WendingAI Switch 用的是同一个网络库，照同样的规则走一遍，
 //! 回不到自己就说明客户端的请求也会被接走。
 
 use std::time::Duration;
@@ -16,7 +16,7 @@ const PROBE_TIMEOUT: Duration = Duration::from_secs(5);
 /// 跟随系统代理访问 `<origin>/health`，`origin` 是写进客户端的本地路由地址。回到了自己
 /// 返回 `None`，没回来返回原因（只给日志用）；客户端建不起来时判断不了，也返回 `None`。
 pub async fn hijack_reason(origin: &str) -> Option<String> {
-    // 不能用 http_client 里的客户端：那些对本机地址一律直连，也会套上 CC Switch 自己的出站代理，
+    // 不能用 http_client 里的客户端：那些对本机地址一律直连，也会套上 WendingAI Switch 自己的出站代理，
     // 和客户端看到的系统代理不是一回事。
     let client = match reqwest::Client::builder().timeout(PROBE_TIMEOUT).build() {
         Ok(client) => client,

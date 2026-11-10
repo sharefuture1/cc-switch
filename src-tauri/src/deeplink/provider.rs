@@ -343,7 +343,7 @@ pub(super) fn check_link_values(
 /// omp 会把这个 `apiKey` 换成别的值：`!` 开头的命令、看起来是环境变量名的值，或本机此刻就能
 /// 按环境变量 / `.env` 解析成别的东西的值（用 omp 自己的解析规则判断）。
 ///
-/// 只靠最后一条不够：omp 常在终端里运行，环境和图形界面启动的 CC Switch 不同，`TOKEN` 这种
+/// 只靠最后一条不够：omp 常在终端里运行，环境和图形界面启动的 WendingAI Switch 不同，`TOKEN` 这种
 /// 名字导入时查不到、运行时却能查到。所以没有小写字母的标识符（`TOKEN`、`GITHUB_TOKEN`）一律
 /// 当变量名拒绝；真实 Key 多带 `-`、`.` 或小写字母，全大写字母数字的 Key 要在编辑器里手动填。
 fn is_omp_key_reference(value: &str) -> bool {
@@ -1125,7 +1125,7 @@ fn namespace_kimi_models(settings: &mut serde_json::Value, id: &str) {
     }
 }
 
-/// Oh My Pi 的 models.yml 节点：和 Pi 一样只写一个模型，但没有 `name` 字段（显示名在 CC Switch）。
+/// Oh My Pi 的 models.yml 节点：和 Pi 一样只写一个模型，但没有 `name` 字段（显示名在 WendingAI Switch）。
 fn build_omp_settings(
     request: &DeepLinkImportRequest,
     api_format: Option<ApiFormat>,

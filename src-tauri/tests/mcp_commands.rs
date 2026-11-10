@@ -228,7 +228,7 @@ fn pi_toggle_writes_its_mcp_json_and_keeps_pi_fields() {
     assert_eq!(disabled["exposure"], "direct");
     assert!(!state.db.get_all_mcp_servers().unwrap()["docs"].apps.pi);
 
-    // 在 CC Switch 里删除服务器才删掉条目
+    // 在 WendingAI Switch 里删除服务器才删掉条目
     McpService::delete_server(&state, "docs").unwrap();
     assert!(read()["mcpServers"].get("docs").is_none());
 
@@ -483,7 +483,9 @@ fn import_default_config_claude_persists_provider() {
     );
 
     // 验证数据已持久化到数据库（v3.7.0+ 使用 SQLite 而非 config.json）
-    let db_path = home.join(".cc-switch").join("cc-switch.db");
+    let db_path = home
+        .join(cc_switch_lib::brand::DATA_DIR_NAME)
+        .join("cc-switch.db");
     assert!(
         db_path.exists(),
         "importing default config should persist to cc-switch.db"
@@ -745,7 +747,9 @@ fn import_mcp_from_claude_creates_config_and_enables_servers() {
     );
 
     // 验证数据已持久化到数据库
-    let db_path = home.join(".cc-switch").join("cc-switch.db");
+    let db_path = home
+        .join(cc_switch_lib::brand::DATA_DIR_NAME)
+        .join("cc-switch.db");
     assert!(
         db_path.exists(),
         "state.save should persist to cc-switch.db when changes detected"

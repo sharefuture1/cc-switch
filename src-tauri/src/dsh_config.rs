@@ -1,4 +1,4 @@
-//! DeepSeek Harness' standard profiles. CC Switch keeps one provider and MCP set in every
+//! DeepSeek Harness' standard profiles. WendingAI Switch keeps one provider and MCP set in every
 //! `web` and `desktop` profile, plus initialized `headless` and `acp` profiles;
 //! `sdk` / `sdk-minimal` are for embedding and stay native-owned. All
 //! profiles share `$DSH_HOME`'s credentials, sessions, skills and `AGENTS.md`.
@@ -13,7 +13,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-/// DSH home: the directory set in CC Switch settings (e.g. a WSL path, #9239), then
+/// DSH home: the directory set in WendingAI Switch settings (e.g. a WSL path, #9239), then
 /// `DSH_HOME`, then `~/.dsh`.
 pub(crate) fn data_dir() -> PathBuf {
     if let Some(dir) = crate::settings::get_dsh_override_dir() {
@@ -25,7 +25,7 @@ pub(crate) fn data_dir() -> PathBuf {
         .unwrap_or_else(|| get_home_dir().join(".dsh"))
 }
 
-/// Profiles CC Switch writes, in this order. Web and Desktop are prepared before first launch.
+/// Profiles WendingAI Switch writes, in this order. Web and Desktop are prepared before first launch.
 const TARGET_PROFILES: [&str; 4] = ["web", "desktop", "headless", "acp"];
 /// Providers and MCP are shown from the first of these that exists.
 const DISPLAY_PROFILES: [&str; 2] = ["web", "desktop"];
@@ -572,7 +572,7 @@ pub(crate) fn account_grant() -> Result<Option<(String, String)>, AppError> {
 }
 
 /// DSH's per-install device id (`deepseek-account-platform/device`), created on first login
-/// exactly like DSH does so CC Switch and DSH report the same device to Platform.
+/// exactly like DSH does so WendingAI Switch and DSH report the same device to Platform.
 pub(crate) fn account_device_id() -> Result<String, AppError> {
     let path = credentials_path();
     let _lock = FileLock::acquire(&path)?;
@@ -637,7 +637,7 @@ pub(crate) fn remove_account_grant() -> Result<Option<(String, String)>, AppErro
     Ok(grant)
 }
 
-/// Providers as shown in CC Switch: every initialized profile ([`read_paths`]), authoritative
+/// Providers as shown in WendingAI Switch: every initialized profile ([`read_paths`]), authoritative
 /// profile first, first occurrence of a key winning.
 pub(crate) fn get_providers() -> Result<IndexMap<String, Value>, AppError> {
     let credentials = credentials_path();
@@ -664,7 +664,7 @@ pub(crate) fn get_providers() -> Result<IndexMap<String, Value>, AppError> {
     Ok(merged)
 }
 
-/// An `llm-pi-ai` config in the home patch is applied after every profile, so providers CC Switch
+/// An `llm-pi-ai` config in the home patch is applied after every profile, so providers WendingAI Switch
 /// writes into the profiles would never take effect.
 fn ensure_providers_not_shadowed(home: &Path) -> Result<(), AppError> {
     let text = read_text(home)?;
@@ -1078,7 +1078,7 @@ fn initialize_profiles_and_commit<T>(
 
 /// Position of the authoritative profile ([`config_path`]) among `paths`.
 ///
-/// Every target profile is written, but only the authoritative one defines what CC Switch shows,
+/// Every target profile is written, but only the authoritative one defines what WendingAI Switch shows,
 /// so its copy is the reference the others are compared against. Tests that pass a single
 /// arbitrary path fall back to it.
 fn authoritative_index(paths: &[PathBuf]) -> usize {
@@ -1098,7 +1098,7 @@ fn existing_provider_node(text: &str, id: &str) -> Result<Option<Yaml>, AppError
 
 /// Refuse to write when another profile holds a *different* version of the same provider.
 ///
-/// CC Switch only knows the authoritative copy, so rewriting the others would silently discard
+/// WendingAI Switch only knows the authoritative copy, so rewriting the others would silently discard
 /// whatever the user changed natively in DSH (a different endpoint, models or credential
 /// reference). Refuse instead, and name the profile that has to be reconciled.
 fn ensure_provider_copies_agree(
@@ -1140,10 +1140,10 @@ fn diverged_provider_error(
     AppError::localized(
         "dsh.provider_diverged",
         format!(
-            "供应商 '{id}' 在 profile '{other}' 里的内容与 '{source}' 不同；CC Switch 只认得 '{source}' 的那份，改写会覆盖你在 DeepSeek Harness 里对 '{other}' 做的修改。请先在 DeepSeek Harness 里把两者改成一致，或手动编辑 profiles/{other}/cordis.patch.yml。"
+            "供应商 '{id}' 在 profile '{other}' 里的内容与 '{source}' 不同；WendingAI Switch 只认得 '{source}' 的那份，改写会覆盖你在 DeepSeek Harness 里对 '{other}' 做的修改。请先在 DeepSeek Harness 里把两者改成一致，或手动编辑 profiles/{other}/cordis.patch.yml。"
         ),
         format!(
-            "Provider '{id}' differs between the '{other}' and '{source}' profiles; CC Switch only knows the '{source}' copy, so writing would discard your changes in '{other}'. Make them identical in DeepSeek Harness, or edit profiles/{other}/cordis.patch.yml directly."
+            "Provider '{id}' differs between the '{other}' and '{source}' profiles; WendingAI Switch only knows the '{source}' copy, so writing would discard your changes in '{other}'. Make them identical in DeepSeek Harness, or edit profiles/{other}/cordis.patch.yml directly."
         ),
     )
 }
@@ -1231,7 +1231,7 @@ fn diverged_mcp_error(id: &str, other: Option<&PathBuf>, source: Option<&PathBuf
 }
 
 /// The native `llm-pi-ai` provider node for an editor config, and the credentials text with a new
-/// key stored under CC Switch's reference (unchanged when the key is unchanged).
+/// key stored under WendingAI Switch's reference (unchanged when the key is unchanged).
 fn native_provider(
     id: &str,
     config: &Value,
@@ -1339,7 +1339,7 @@ pub(crate) fn set_provider(id: &str, config: Value) -> Result<(), AppError> {
 pub(crate) fn remove_provider(id: &str) -> Result<(), AppError> {
     save_and_commit(id, None, false, || Ok(()))
 }
-/// A key is taken when any target profile already has it (CC Switch never overwrites a node).
+/// A key is taken when any target profile already has it (WendingAI Switch never overwrites a node).
 pub(crate) fn provider_key_exists(id: &str) -> Result<bool, AppError> {
     for path in target_paths() {
         let entry =
@@ -1354,8 +1354,8 @@ pub(crate) fn provider_key_exists(id: &str) -> Result<bool, AppError> {
     Ok(false)
 }
 
-/// MCP servers as shown in CC Switch, read from the display profile ([`config_path`]).
-/// MCP servers as shown in CC Switch: every initialized profile, authoritative profile first,
+/// MCP servers as shown in WendingAI Switch, read from the display profile ([`config_path`]).
+/// MCP servers as shown in WendingAI Switch: every initialized profile, authoritative profile first,
 /// one entry per server name.
 pub(crate) fn mcp_entries() -> Result<Vec<Yaml>, AppError> {
     let authoritative = config_path();
@@ -1550,7 +1550,8 @@ fn mcp_edit(text: &str, id: &str, spec: Option<&Value>) -> Result<String, AppErr
                 .is_none()
         {
             return Err(AppError::Config(
-                "Assign an id to this native MCP entry before editing it in CC Switch".into(),
+                "Assign an id to this native MCP entry before editing it in WendingAI Switch"
+                    .into(),
             ));
         }
         let id_matches = plugin_entries(&all_entries)

@@ -38,7 +38,7 @@ pub struct JsonPatch {
     pub seed: Vec<(KeyPath, Value)>,
     /// 当前值等于其中之一才删除（独有字段切走、残留清理）。`set` 里有同一路径时跳过。
     pub remove_if: Vec<(KeyPath, Vec<Value>)>,
-    /// 当前值满足谓词才删除（值的取值无法事先列举时用，比如「CC Switch 写的账号目录」）。
+    /// 当前值满足谓词才删除（值的取值无法事先列举时用，比如「WendingAI Switch 写的账号目录」）。
     /// `set` 里有同一路径时跳过。
     pub remove_when: Vec<(KeyPath, ValuePredicate)>,
 }

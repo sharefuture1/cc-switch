@@ -201,7 +201,7 @@ pub fn maybe_migrate_codex_provider_template_bucket(
 /// 开关关闭时标记与勾选意愿都会被清除（见 `save_settings`）。
 /// 勾选后不只跑一次：开启时一次、之后每次启动一次。Codex 桌面版 26.1103（CLI 0.167）起，
 /// 线程记的 provider id 和当前选中的不一致就只读，开关开着（live 选 custom）时之后又落进
-/// openai 桶的会话（开关关过又开、绕过 CC Switch 用过 Codex）也得跟着迁，否则打不开。
+/// openai 桶的会话（开关关过又开、绕过 WendingAI Switch 用过 Codex）也得跟着迁，否则打不开。
 /// 为免每次启动都扫一遍会话目录（几千个文件、还要解压 .zst），先查 state DB：
 /// 没有 openai 线程就跳过；读不到 state DB 时退回「每个 Codex 目录只全扫一次」。
 /// custom 桶里官方与第三方会话无法区分，自动逻辑绝不反向搬回；
@@ -334,7 +334,7 @@ fn codex_config_text_history_bucket(config_text: &str) -> Option<String> {
 }
 
 /// 切换完成后判断要不要提示：开关关着、新会话从 openai 换到 custom（或反过来），并且
-/// 原来那组确实有线程。只看 CC Switch 自己会写的这两组。
+/// 原来那组确实有线程。只看 WendingAI Switch 自己会写的这两组。
 pub fn codex_history_split_hint(previous_bucket: Option<&str>) -> Option<CodexHistorySplitHint> {
     if crate::settings::unify_codex_session_history() {
         return None;
@@ -1639,7 +1639,7 @@ base_url = "https://aihubmix.example/v1"
             ),
             Provider::with_id(
                 "legacy-ccswitch".to_string(),
-                "Legacy CC Switch".to_string(),
+                "Legacy WendingAI Switch".to_string(),
                 serde_json::json!({
                     "auth": {},
                     "config": r#"model_provider = "ccswitch"
@@ -2706,7 +2706,7 @@ model = "gpt-5.4"
         let db = Database::memory().expect("memory db");
         let provider = Provider::with_id(
             "legacy-ccswitch".to_string(),
-            "Legacy CC Switch".to_string(),
+            "Legacy WendingAI Switch".to_string(),
             serde_json::json!({
                 "auth": {},
                 "config": r#"model_provider = "ccswitch"
@@ -2956,7 +2956,7 @@ model_provider = "aihubmix"
         assert!(!ids.contains("my-local-relay"));
     }
 
-    /// 端到端测试用的隔离 HOME：CC Switch 设置与 `~/.codex` 都落在临时目录。
+    /// 端到端测试用的隔离 HOME：WendingAI Switch 设置与 `~/.codex` 都落在临时目录。
     struct IsolatedHome {
         dir: tempfile::TempDir,
         original_test_home: Option<OsString>,
@@ -3195,7 +3195,7 @@ model_provider = "aihubmix"
         assert_eq!(first.migrated_state_rows, 1);
         assert_eq!(thread_provider(&state_db, "s1"), "custom");
 
-        // 之后又冒出一个 openai 会话（例如开关关过又开、或绕过 CC Switch 用过 Codex）：
+        // 之后又冒出一个 openai 会话（例如开关关过又开、或绕过 WendingAI Switch 用过 Codex）：
         // 完成标记不再挡住，下一次照样迁。
         fs::write(
             session_dir.join("rollout-s3.jsonl"),
@@ -3295,7 +3295,7 @@ model_provider = "aihubmix"
         );
         assert!(codex_history_split_hint_for("custom", official, |_| Some(2)).is_some());
 
-        // 没换组 / 换的不是 CC Switch 管的两组 / 旧组没线程 / 读不到 state DB：都不提示。
+        // 没换组 / 换的不是 WendingAI Switch 管的两组 / 旧组没线程 / 读不到 state DB：都不提示。
         assert_eq!(
             codex_history_split_hint_for("custom", custom, |_| Some(9)),
             None

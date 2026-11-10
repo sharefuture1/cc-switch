@@ -65,7 +65,7 @@ pub enum SyncMethod {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum SkillStorageLocation {
-    /// CC Switch 管理目录 (~/.cc-switch/skills/)
+    /// WendingAI Switch 管理目录 (~/.cc-switch/skills/)
     #[default]
     CcSwitch,
     /// Agent Skills 统一标准目录 (~/.agents/skills/)
@@ -1161,7 +1161,7 @@ impl SkillService {
                     }
 
                     // Pi、Omp 目录可能包含用户自己维护的同名 Skill。删除 SSOT 前仅移除
-                    // 能验证为 CC Switch 部署的副本；其余路径保留并返回警告。
+                    // 能验证为 WendingAI Switch 部署的副本；其余路径保留并返回警告。
                     for (app, destination) in removal_paths {
                         if let Err(err) =
                             Self::remove_verified_pi_destination(&source, &destination, &directory)
@@ -2051,7 +2051,7 @@ impl SkillService {
                     }
                 }
             }
-            // Omp 没有开关列，是否部署只看原生目录里有没有 CC Switch 的副本。
+            // Omp 没有开关列，是否部署只看原生目录里有没有 WendingAI Switch 的副本。
             let omp_destination = Self::get_app_skills_dir(&AppType::Omp)?.join(&directory);
             if let Some(deployment) =
                 Self::inspect_pi_skill_destination(&src, &omp_destination, &directory)
@@ -2332,7 +2332,7 @@ impl SkillService {
 
     /// 扫描未管理的 Skills
     ///
-    /// 扫描各应用目录，找出未被 CC Switch 管理的 Skills
+    /// 扫描各应用目录，找出未被 WendingAI Switch 管理的 Skills
     pub fn scan_unmanaged(db: &Arc<Database>) -> Result<Vec<UnmanagedSkill>> {
         let _state_guard = skill_state_read_guard();
         let managed_skills = db.get_all_installed_skills()?;
@@ -2396,7 +2396,7 @@ impl SkillService {
 
     /// 从应用目录导入 Skills
     ///
-    /// 将未管理的 Skills 导入到 CC Switch 统一管理
+    /// 将未管理的 Skills 导入到 WendingAI Switch 统一管理
     pub fn import_from_apps(
         db: &Arc<Database>,
         imports: Vec<ImportSkillSelection>,
@@ -3051,7 +3051,7 @@ impl SkillService {
     }
 
     /// Skills 不由 `sync_to_app` 投影的应用：Claude Desktop、OpenClaw 不支持 Skills，
-    /// Pi 没有数据库列、按目录是否存在现算。这些应用的 skills 目录不归 CC Switch 管，
+    /// Pi 没有数据库列、按目录是否存在现算。这些应用的 skills 目录不归 WendingAI Switch 管，
     /// 同步时一个字节都不能碰——OpenClaw 自己的 `~/.openclaw/skills` 里和受管
     /// Skill 同名的真实目录，否则会被当成「已关掉的投影」删掉。
     fn is_sync_managed_app(app: &AppType) -> bool {
@@ -3102,7 +3102,7 @@ impl SkillService {
             .map(|skill| (skill.directory.to_lowercase(), skill))
             .collect();
 
-        // Unselected MCode, Agy and Kimi directories may have been installed outside CC Switch.
+        // Unselected MCode, Agy and Kimi directories may have been installed outside WendingAI Switch.
         // Explicit disable/uninstall handles removal of managed deployments.
         if app_dir.exists()
             && !matches!(
@@ -7084,7 +7084,7 @@ mod tests {
     }
 
     fn assert_settings_write_isolated(home: &TestHomeGuard) {
-        let config_dir = crate::config::get_home_dir().join(".cc-switch");
+        let config_dir = crate::config::get_home_dir().join(crate::brand::DATA_DIR_NAME);
         assert!(
             config_dir.starts_with(&home.home),
             "settings.json would be written outside the test home: {}",
@@ -7457,7 +7457,7 @@ mod tests {
             .expect("migrate away from alias");
         let new_source = temp
             .path()
-            .join(".cc-switch")
+            .join(crate::brand::DATA_DIR_NAME)
             .join("skills")
             .join("test-skill");
         let pi_skill = temp
@@ -7572,8 +7572,13 @@ mod tests {
             .join("test-skill");
         fs::create_dir_all(pi_skill.parent().expect("Pi skills directory"))
             .expect("create Pi skills directory");
-        std::os::unix::fs::symlink(Path::new("../../.cc-switch/skills/test-skill"), &pi_skill)
-            .expect("create relative Pi symlink");
+        std::os::unix::fs::symlink(
+            Path::new("../..")
+                .join(crate::brand::DATA_DIR_NAME)
+                .join("skills/test-skill"),
+            &pi_skill,
+        )
+        .expect("create relative Pi symlink");
 
         let result = SkillService::migrate_storage(&db, SkillStorageLocation::Unified)
             .expect("migrate storage");
@@ -7863,7 +7868,7 @@ mod tests {
                 ("weread-skills", "skills", "."),
             ] {
                 let home = tempdir().expect("home");
-                let config_dir = home.path().join(".cc-switch");
+                let config_dir = home.path().join(crate::brand::DATA_DIR_NAME);
                 fs::create_dir_all(&config_dir).expect("isolated config directory");
                 // Keep Windows' legacy-HOME fallback out of this destructive test.
                 fs::File::create(config_dir.join("cc-switch.db"))

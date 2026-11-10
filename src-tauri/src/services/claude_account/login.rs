@@ -1,6 +1,6 @@
 //! 加账号：在账号目录里运行官方的 `claude auth login --claudeai`。
 //!
-//! 登录页、令牌、存到哪里全由 Claude Code 负责，CC Switch 不经手任何凭据，只做三件事：
+//! 登录页、令牌、存到哪里全由 Claude Code 负责，WendingAI Switch 不经手任何凭据，只做三件事：
 //! - 拿到登录链接给窗口显示、打开。macOS / Linux 把 `BROWSER` 设成账号目录旁的小脚本，
 //!   Claude Code 要打开的那个链接（登录后回到本机端口）会被写进文件；Windows 上让 Claude
 //!   Code 自己打开浏览器。两种情况下它打印出来的链接都作后备（那个页面显示一段代码让人粘贴）。
@@ -276,7 +276,7 @@ pub async fn start(
     let callback_port = callback_port(&auth_url);
     Ok(RunningLogin {
         auth_url,
-        // 截获到的链接是 CC Switch 拦下来的，浏览器还没开；只打印出来的链接，Windows 上
+        // 截获到的链接是 WendingAI Switch 拦下来的，浏览器还没开；只打印出来的链接，Windows 上
         // Claude Code 已经自己去开浏览器了，macOS / Linux 上则是它没打算开（没有图形界面）
         browser_opened: open_browser && !intercepted && cfg!(windows),
         stdin,
@@ -481,7 +481,7 @@ pub fn apply_account_env(cmd: &mut std::process::Command, config_dir: &Path) {
 /// 全局代理只作用于进程内的 reqwest 客户端；Claude Code（Node）只认 `HTTPS_PROXY`
 /// 这类环境变量、不读系统代理设置，不传的话登录换令牌、`/usage` 都会直连出去。
 /// 只传 http(s)：Claude Code 不支持 SOCKS 代理。大小写两套都设，Node 优先读小写。
-/// 没配全局代理时不动，子进程照旧继承 CC Switch 的环境变量。
+/// 没配全局代理时不动，子进程照旧继承 WendingAI Switch 的环境变量。
 pub fn apply_global_proxy_env(cmd: &mut std::process::Command) {
     let Some(url) = crate::proxy::http_client::get_current_proxy_url() else {
         return;
