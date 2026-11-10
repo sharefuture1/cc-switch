@@ -309,7 +309,8 @@ describe("MoArk (模力方舟) provider presets", () => {
     );
   });
 
-  it("registers the MoArk mark in the icon registry", () => {
+  // WendingAI：该图标属于合作推广品牌，已由 scripts/brand-apply.mjs 移除
+  it.skip("registers the MoArk mark in the icon registry", () => {
     expect(hasIcon("moark")).toBe(true);
     expect(getIcon("moark")).toContain("<title>MoArk</title>");
     expect(getIcon("moark")).toContain('viewBox="0 0 88 88"');

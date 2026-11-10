@@ -28,9 +28,12 @@ const modules = import.meta.glob<WhatsNewEntry>("../whats-new/*.json", {
 });
 
 /** 所有版本的摘要，新到旧 */
-export const WHATS_NEW_ENTRIES: WhatsNewEntry[] = Object.values(modules).sort(
-  (a, b) => compareVersions(b.version, a.version),
-);
+// WendingAI 纯净版不展示上游更新摘要（BRAND.upstreamNoticesEnabled = false）
+export const WHATS_NEW_ENTRIES: WhatsNewEntry[] = __WENDING_PURE__
+  ? []
+  : Object.values(modules).sort((a, b) =>
+      compareVersions(b.version, a.version),
+    );
 
 /** 当前版本比记录的已看版本新（或从没记录过）：需要处理一次 */
 export function isNewerThanSeen(

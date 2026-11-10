@@ -433,7 +433,7 @@ describe("OpenCodeFormFields", () => {
       { id: "old-model", ownedBy: null },
     ]);
     const { props, rerender } = renderOpenCodeForm({
-      headers: { "X-Title": "CC Switch" },
+      headers: { "X-Title": "WendingAI Switch" },
     });
     fireEvent.click(screen.getByRole("button", { name: FETCH }));
     const dialog = await screen.findByRole("dialog");
@@ -541,7 +541,7 @@ describe("OpenCodeFormFields", () => {
     renderOpenCodeForm({
       headers: {
         "HTTP-Referer": "https://cc-switch.app",
-        "X-Title": "CC Switch",
+        "X-Title": "WendingAI Switch",
       },
     });
 
@@ -550,17 +550,17 @@ describe("OpenCodeFormFields", () => {
       screen.getByDisplayValue("https://cc-switch.app"),
     ).toBeInTheDocument();
     expect(screen.getByDisplayValue("X-Title")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("CC Switch")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("WendingAI Switch")).toBeInTheDocument();
   });
 
   it("updates provider headers", () => {
     const onHeadersChange = vi.fn();
     renderOpenCodeForm({
-      headers: { "X-Title": "CC Switch" },
+      headers: { "X-Title": "WendingAI Switch" },
       onHeadersChange,
     });
 
-    fireEvent.change(screen.getByDisplayValue("CC Switch"), {
+    fireEvent.change(screen.getByDisplayValue("WendingAI Switch"), {
       target: { value: "OpenCode" },
     });
 
@@ -591,7 +591,7 @@ describe("OpenCodeFormFields", () => {
   it("removes provider headers", () => {
     const onHeadersChange = vi.fn();
     renderOpenCodeForm({
-      headers: { "X-Title": "CC Switch" },
+      headers: { "X-Title": "WendingAI Switch" },
       onHeadersChange,
     });
 
@@ -618,7 +618,7 @@ describe("OpenCodeFormFields", () => {
   it("restores an existing header name when it is cleared", () => {
     const onHeadersChange = vi.fn();
     renderOpenCodeForm({
-      headers: { "X-Title": "CC Switch" },
+      headers: { "X-Title": "WendingAI Switch" },
       onHeadersChange,
     });
 

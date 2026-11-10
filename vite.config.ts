@@ -13,6 +13,10 @@ export default defineConfig(({ command }) => ({
     react(),
   ].filter(Boolean),
   base: "./",
+  // WendingAI 纯净版开关（见 src/brand/brand.ts）。设 WENDING_UPSTREAM_MODE=1 可构建上游完整预设，用于对比调试。
+  define: {
+    __WENDING_PURE__: JSON.stringify(process.env.WENDING_UPSTREAM_MODE !== "1"),
+  },
   build: {
     outDir: "../dist",
     emptyOutDir: true,

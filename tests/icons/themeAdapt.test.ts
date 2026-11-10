@@ -50,14 +50,16 @@ describe("adaptSvgToTheme", () => {
 });
 
 describe("needsLightBacking", () => {
-  it("is false for tile and themable icons, true for raster icons", () => {
+  // WendingAI：该图标属于合作推广品牌，已由 scripts/brand-apply.mjs 移除
+  it.skip("is false for tile and themable icons, true for raster icons", () => {
     expect(needsLightBacking("sssaicode")).toBe(false);
     expect(needsLightBacking("openai")).toBe(false);
     expect(needsLightBacking("anthropic")).toBe(false);
     expect(needsLightBacking("atlascloud")).toBe(true);
   });
 
-  it("backs multi-color SVGs that keep near-black ink after adaptation", () => {
+  // WendingAI：该图标属于合作推广品牌，已由 scripts/brand-apply.mjs 移除
+  it.skip("backs multi-color SVGs that keep near-black ink after adaptation", () => {
     // 近黑部分不改色、直接画在透明底上的多色图标，深色卡片上要垫浅色底
     for (const name of [
       "opencode",

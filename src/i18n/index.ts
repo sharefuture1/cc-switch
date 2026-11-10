@@ -6,6 +6,7 @@ import ja from "./locales/ja.json";
 import tr from "./locales/tr.json";
 import zh from "./locales/zh.json";
 import zhTW from "./locales/zh-TW.json";
+import { brandTranslations } from "@/brand/i18n";
 
 type Language = "zh" | "zh-TW" | "en" | "ja" | "tr";
 
@@ -97,6 +98,11 @@ i18n.use(initReactI18next).init({
   // 开发模式下显示调试信息
   debug: false,
 });
+
+// WendingAI 品牌文案（wending.*）
+for (const [lng, bundle] of Object.entries(brandTranslations)) {
+  i18n.addResourceBundle(lng, "translation", bundle, true, true);
+}
 
 /**
  * 用后端 settings.json 里保存的语言校正界面语言。

@@ -99,7 +99,7 @@ const KIMI_K3_COMPAT = {
  * aligned with the OpenCode catalog, but Pi does not import or derive from
  * another application's presets at runtime.
  */
-const piProviderPresetDefinitions: PiProviderPreset[] = [
+const piProviderPresetDefinitions = (): PiProviderPreset[] => [
   {
     name: "TokenPlus",
     websiteUrl: "https://www.tokenplus.cn/",
@@ -3515,6 +3515,12 @@ function materializeVerifiedThinkingProfiles(
   };
 }
 
-export const piProviderPresets = piProviderPresetDefinitions.map(
-  materializeVerifiedThinkingProfiles,
-);
+const upstreamPiProviderPresets = () =>
+  piProviderPresetDefinitions().map(materializeVerifiedThinkingProfiles);
+
+/**
+ * WendingAI 纯净版：对外只暴露品牌预设（见 `src/brand/presets.ts`）；
+ * 上游预设保留为 `upstreamPiProviderPresets`，便于与上游合并，构建时会被 tree-shake 掉。
+ */
+export const piProviderPresets: ReturnType<typeof upstreamPiProviderPresets> =
+  __WENDING_PURE__ ? [] : upstreamPiProviderPresets();

@@ -6,7 +6,8 @@ import { hasIcon, isTileIcon } from "@/icons/extracted";
 import { iconMetadata } from "@/icons/extracted/metadata";
 
 describe("ProviderIconBox", () => {
-  it("lets icons with their own solid background fill the box", () => {
+  // WendingAI：该图标属于合作推广品牌，已由 scripts/brand-apply.mjs 移除
+  it.skip("lets icons with their own solid background fill the box", () => {
     const { container } = render(<ProviderIconBox icon="88api" name="88API" />);
     const box = container.firstElementChild as HTMLElement;
     const img = box.querySelector("img") as HTMLImageElement;
@@ -17,7 +18,8 @@ describe("ProviderIconBox", () => {
     expect(img.className).not.toContain("object-contain");
   });
 
-  it("keeps transparent logos small and centered inside a bordered box", () => {
+  // WendingAI：该图标属于合作推广品牌，已由 scripts/brand-apply.mjs 移除
+  it.skip("keeps transparent logos small and centered inside a bordered box", () => {
     const { container } = render(
       <ProviderIconBox icon="dmxapi" name="DMXAPI" />,
     );

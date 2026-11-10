@@ -148,7 +148,7 @@ function toKimiModel(model: PiPresetModel, type: KimiProviderType): KimiModel {
 
 // Share the reviewed supplier catalog and grouping metadata with Pi; translate
 // connection and model fields explicitly, without leaking Pi-only SDK options.
-export const kimiProviderPresets: KimiProviderPreset[] =
+const upstreamKimiProviderPresets = (): KimiProviderPreset[] =>
   piProviderPresets.flatMap((preset) => {
     const { settingsConfig: source, ...identity } = preset;
     let type = KIMI_API_FORMATS[source.api];
@@ -182,3 +182,11 @@ export const kimiProviderPresets: KimiProviderPreset[] =
       },
     ];
   });
+
+/**
+ * WendingAI 纯净版：对外只暴露品牌预设（见 `src/brand/presets.ts`）；
+ * 上游预设保留为 `upstreamKimiProviderPresets`，便于与上游合并，构建时会被 tree-shake 掉。
+ */
+export const kimiProviderPresets: KimiProviderPreset[] = __WENDING_PURE__
+  ? []
+  : upstreamKimiProviderPresets();

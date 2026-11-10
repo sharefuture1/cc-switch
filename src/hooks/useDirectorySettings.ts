@@ -1,3 +1,4 @@
+import { BRAND } from "@/brand/brand";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "@/lib/toast";
@@ -78,7 +79,7 @@ const sanitizeDir = (value?: string | null): string | undefined => {
 const computeDefaultAppConfigDir = async (): Promise<string | undefined> => {
   try {
     const home = await homeDir();
-    return await join(home, ".cc-switch");
+    return await join(home, BRAND.dataDirName);
   } catch (error) {
     console.error(
       "[useDirectorySettings] Failed to resolve default app config dir",

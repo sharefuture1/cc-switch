@@ -1,3 +1,4 @@
+import { BRAND } from "@/brand/brand";
 import React, {
   createContext,
   useContext,
@@ -60,6 +61,8 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
   const isCheckingRef = useRef(false);
 
   const checkUpdate = useCallback(async () => {
+    // WendingAI：自有更新服务就绪前关闭自动更新，绝不拉取上游版本的更新
+    if (!BRAND.updatesEnabled) return false;
     if (isCheckingRef.current) return false;
     isCheckingRef.current = true;
     setIsChecking(true);

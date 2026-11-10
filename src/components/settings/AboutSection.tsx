@@ -21,6 +21,8 @@ import { Badge } from "@/components/ui/badge";
 import { WhatsNewDialog } from "@/components/WhatsNewDialog";
 import { WHATS_NEW_ENTRIES, entriesUpTo } from "@/lib/whatsNew";
 import ccswitchLogo from "@/assets/icons/logo.svg";
+import { PURE_EDITION } from "@/brand/brand";
+import { WendingAboutSection } from "@/brand/components/WendingAboutSection";
 import { extractErrorMessage } from "@/utils/errorUtils";
 
 interface AboutSectionProps {
@@ -45,7 +47,16 @@ function readStarPromptDismissed(): boolean {
  * 设置 → 关于：版本、便携模式、检查更新 / 安装并重启、项目链接。
  * 命令行应用的安装与升级在侧栏「应用」页。
  */
-export function AboutSection({ isPortable }: AboutSectionProps) {
+/** WendingAI 纯净版换成品牌“关于”页（src/brand/components/WendingAboutSection.tsx） */
+export function AboutSection(props: AboutSectionProps) {
+  return PURE_EDITION ? (
+    <WendingAboutSection />
+  ) : (
+    <UpstreamAboutSection {...props} />
+  );
+}
+
+function UpstreamAboutSection({ isPortable }: AboutSectionProps) {
   const { t } = useTranslation();
   // 惰性初始化自模块缓存：重挂时首帧即渲染上次的值，避免 loading 闪烁；首次挂载缓存
   // 为空则回退到原始初值（null / loading）。
@@ -204,7 +215,7 @@ export function AboutSection({ isPortable }: AboutSectionProps) {
           className="h-10 w-10 shrink-0 p-1"
         />
         <div className="min-w-0 flex-1">
-          <div className="text-title text-fg-1">CC Switch</div>
+          <div className="text-title text-fg-1">WendingAI Switch</div>
           <div className="flex flex-wrap items-center gap-2 text-caption text-fg-2">
             {isLoadingVersion ? (
               <Loader2 className="h-3 w-3 animate-spin" />

@@ -72,7 +72,7 @@ function reasoningEfforts(model: PiPresetModel) {
 }
 
 /** DSH's pi-ai adapter accepts these three wire protocols and native compatibility options. */
-export const dshProviderPresets: McodeProviderPreset[] =
+const upstreamDshProviderPresets = (): McodeProviderPreset[] =>
   piProviderPresets.flatMap((preset) => {
     const config = preset.settingsConfig;
     if (
@@ -139,3 +139,11 @@ export const dshAccountPreset: McodeProviderPreset = {
     models: {},
   },
 };
+
+/**
+ * WendingAI 纯净版：对外只暴露品牌预设（见 `src/brand/presets.ts`）；
+ * 上游预设保留为 `upstreamDshProviderPresets`，便于与上游合并，构建时会被 tree-shake 掉。
+ */
+export const dshProviderPresets: McodeProviderPreset[] = __WENDING_PURE__
+  ? []
+  : upstreamDshProviderPresets();

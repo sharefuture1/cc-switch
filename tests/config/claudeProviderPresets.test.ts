@@ -219,7 +219,8 @@ describe("Microsoft Foundry Provider Preset", () => {
 describe("Genesis Claude Code preset", () => {
   const preset = providerPresets.find((p) => p.name === "Genesis");
 
-  it("uses the Genesis logo", () => {
+  // WendingAI：该图标属于合作推广品牌，已由 scripts/brand-apply.mjs 移除
+  it.skip("uses the Genesis logo", () => {
     expect(preset?.icon).toBe("genesis");
     expect(hasIcon("genesis")).toBe(true);
   });

@@ -106,6 +106,9 @@ import type { AppMode, StartupAttachFailure } from "@/types/proxy";
 import { PROMPT_APP_IDS } from "@/lib/query/prompts";
 import { DeepLinkImportDialog } from "@/components/DeepLinkImportDialog";
 import { FirstRunNoticeDialog } from "@/components/FirstRunNoticeDialog";
+import { BRAND, PURE_EDITION } from "@/brand/brand";
+import { WendingAccountBar } from "@/brand/components/WendingAccountBar";
+import { WendingOnboardingDialog } from "@/brand/components/WendingOnboardingDialog";
 import { WhatsNewNotice } from "@/components/WhatsNewDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -128,6 +131,7 @@ import OpenClawHealthBanner from "@/components/openclaw/OpenClawHealthBanner";
 import {
   APP_IDS,
   DEFAULT_VISIBLE_APPS,
+  applyBrandVisibility,
   isModeAppId,
   isPiFamilyApp,
   orderAppIds,
@@ -280,10 +284,11 @@ function App() {
   const useAppWindowControls =
     isWindows() || (isLinux() && (settingsData?.useAppWindowControls ?? false));
   const visibleApps = useMemo<VisibleApps>(
-    () => ({
-      ...DEFAULT_VISIBLE_APPS,
-      ...settingsData?.visibleApps,
-    }),
+    () =>
+      applyBrandVisibility({
+        ...DEFAULT_VISIBLE_APPS,
+        ...settingsData?.visibleApps,
+      }),
     [settingsData?.visibleApps],
   );
 
@@ -630,7 +635,7 @@ function App() {
   );
 
   // Codex / Grok Build 跟随系统代理发请求：发往本地路由的请求被系统代理接走时客户端只看到
-  // 空正文 502，CC Switch 这边没有日志（#9221），进入路由时后端自检一次，没回来就提示。
+  // 空正文 502，WendingAI Switch 这边没有日志（#9221），进入路由时后端自检一次，没回来就提示。
   useTauriEvent<{ appType: AppId; origin: string }>(
     "proxy-loopback-hijacked",
     (payload) => {
@@ -1006,7 +1011,7 @@ function App() {
 
   // 侧栏、⌘K 进用量统计看全部应用；只有应用页 ⋯ 进来时带应用筛选
   const openPageFromNav = (page: GlobalPage | "settings") => {
-    // 「设置」上的绿点说的是 CC Switch 有新版本，点进去直接到「关于」里的更新按钮
+    // 「设置」上的绿点说的是 WendingAI Switch 有新版本，点进去直接到「关于」里的更新按钮
     if (page === "settings" && hasUpdate) {
       openSettings("about");
       return;
@@ -1896,6 +1901,7 @@ function App() {
           id="content-area"
           className="relative isolate flex min-w-0 flex-1 flex-col overflow-hidden bg-app"
         >
+          {PURE_EDITION && <WendingAccountBar />}
           {showEnvBanner && envConflicts.length > 0 && (
             <EnvWarningBanner
               conflicts={envConflicts}
@@ -1993,7 +1999,7 @@ function App() {
             : t("confirm.deleteProvider")
         }
         message={confirmActionMessage}
-        // 「移除」只是从应用配置里拿掉、CC Switch 里还留着，可以再加回去，不用红色
+        // 「移除」只是从应用配置里拿掉、WendingAI Switch 里还留着，可以再加回去，不用红色
         variant={confirmAction?.action === "remove" ? "info" : "destructive"}
         onConfirm={() => void handleConfirmAction()}
         onCancel={() => setConfirmAction(null)}
@@ -2038,9 +2044,10 @@ function App() {
       />
 
       <DeepLinkImportDialog />
-      <FirstRunNoticeDialog />
-      <NewLayoutDialog />
-      <WhatsNewNotice />
+      {PURE_EDITION && <WendingOnboardingDialog />}
+      {BRAND.upstreamNoticesEnabled && <FirstRunNoticeDialog />}
+      {BRAND.upstreamNoticesEnabled && <NewLayoutDialog />}
+      {BRAND.upstreamNoticesEnabled && <WhatsNewNotice />}
     </WindowControlsContext.Provider>
   );
 }

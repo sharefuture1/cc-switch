@@ -10,6 +10,7 @@ import type {
 } from "../types";
 import type { PresetTheme } from "./claudeProviderPresets";
 import type { PresetFamilyFields } from "./presetFamilies";
+import { wendingCodexPresets } from "@/brand/presets";
 
 // MiMo 官方 Codex 目录的系统提示词。
 // https://mimo.mi.com/docs/tokenplan/integration/codex-configuration
@@ -131,7 +132,7 @@ function modelCatalog(
   );
 }
 
-export const codexProviderPresets: CodexProviderPreset[] = [
+const upstreamCodexProviderPresets = (): CodexProviderPreset[] => [
   {
     name: "OpenAI Official",
     websiteUrl: "https://chatgpt.com/codex",
@@ -227,7 +228,7 @@ export const codexProviderPresets: CodexProviderPreset[] = [
     ),
     endpointCandidates: ["https://api.moonshot.cn/v1"],
     // 原生 Responses 直连（不需要本地路由接管）：官方 Codex 接入文档
-    //（platform.kimi.com/docs/guide/codex-kimi.md，直接以 CC Switch 为例）
+    //（platform.kimi.com/docs/guide/codex-kimi.md，直接以 WendingAI Switch 为例）
     // 给出 base_url = https://api.moonshot.cn/v1 + wire_api = "responses"，
     // 并明写开放平台「原生支持 Codex 使用的 Responses API，无需协议转换或本
     // 地代理」；接口参考 platform.kimi.com/docs/api/responses.md（POST
@@ -330,7 +331,7 @@ export const codexProviderPresets: CodexProviderPreset[] = [
     ),
     endpointCandidates: ["https://api.kimi.com/coding/v1"],
     // 原生 Responses 直连（不需要本地路由接管）：官方 Codex 接入文档
-    //（kimi.com/code/docs/third-party-tools/codex.html，以 CC Switch 为例）
+    //（kimi.com/code/docs/third-party-tools/codex.html，以 WendingAI Switch 为例）
     // 给出 base_url = https://api.kimi.com/coding/v1 且 wire_api「必须填
     // responses」，并明写「Kimi Code 服务端原生支持 OpenAI Responses API
     //（流式/非流式、reasoning、function calling 均可用），无需任何本地路由
@@ -4870,7 +4871,7 @@ base_url = "https://cc-api.pipellm.ai/v1"`,
     websiteUrl: "https://moark.com",
     apiKeyUrl: "https://moark.com/dashboard/tokens",
     auth: generateThirdPartyAuth(""),
-    // 官方文档（CC Switch 快速配置）：Codex 走 /v1 的 Responses 原生协议
+    // 官方文档（WendingAI Switch 快速配置）：Codex 走 /v1 的 Responses 原生协议
     config: generateThirdPartyConfig(
       "moark",
       "https://moark.com/v1",
@@ -5129,3 +5130,11 @@ requires_openai_auth = true`,
     ],
   },
 ];
+
+/**
+ * WendingAI 纯净版：对外只暴露品牌预设（见 `src/brand/presets.ts`）；
+ * 上游预设保留为 `upstreamCodexProviderPresets`，便于与上游合并，构建时会被 tree-shake 掉。
+ */
+export const codexProviderPresets: CodexProviderPreset[] = __WENDING_PURE__
+  ? wendingCodexPresets
+  : upstreamCodexProviderPresets();

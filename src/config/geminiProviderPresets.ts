@@ -1,5 +1,6 @@
 import type { ProviderCategory } from "@/types";
 import type { PresetFamilyFields } from "./presetFamilies";
+import { wendingGeminiPresets } from "@/brand/presets";
 
 /**
  * Gemini 预设供应商的视觉主题配置
@@ -33,7 +34,7 @@ export interface GeminiProviderPreset extends PresetFamilyFields {
   iconColor?: string; // 图标颜色
 }
 
-export const geminiProviderPresets: GeminiProviderPreset[] = [
+const upstreamGeminiProviderPresets = (): GeminiProviderPreset[] => [
   {
     name: "Google Official",
     websiteUrl: "https://ai.google.dev/",
@@ -1108,3 +1109,11 @@ export function getGeminiPresetByUrl(
       url.toLowerCase().includes(preset.baseURL.toLowerCase()),
   );
 }
+
+/**
+ * WendingAI 纯净版：对外只暴露品牌预设（见 `src/brand/presets.ts`）；
+ * 上游预设保留为 `upstreamGeminiProviderPresets`，便于与上游合并，构建时会被 tree-shake 掉。
+ */
+export const geminiProviderPresets: GeminiProviderPreset[] = __WENDING_PURE__
+  ? wendingGeminiPresets
+  : upstreamGeminiProviderPresets();

@@ -82,7 +82,7 @@ wire_api = "responses"
 requires_openai_auth = true`;
 }
 
-export const grokBuildProviderPresets: GrokBuildProviderPreset[] = [
+const upstreamGrokBuildProviderPresets = (): GrokBuildProviderPreset[] => [
   // ===== 赞助商预设：文件顺序与 README 赞助商表对齐（仅维护约定；应用内一律按显示名排序，不置顶）=====
   {
     name: "PackyCode",
@@ -844,3 +844,10 @@ export const grokBuildProviderPresets: GrokBuildProviderPreset[] = [
     icon: "aicoming",
   },
 ];
+
+/**
+ * WendingAI 纯净版：对外只暴露品牌预设（见 `src/brand/presets.ts`）；
+ * 上游预设保留为 `upstreamGrokBuildProviderPresets`，便于与上游合并，构建时会被 tree-shake 掉。
+ */
+export const grokBuildProviderPresets: GrokBuildProviderPreset[] =
+  __WENDING_PURE__ ? [] : upstreamGrokBuildProviderPresets();

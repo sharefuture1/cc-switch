@@ -9,6 +9,7 @@ import {
   OpenClawIcon,
 } from "@/components/BrandIcons";
 import { ProviderIcon } from "@/components/ProviderIcon";
+import { isBrandAppEnabled } from "@/brand/brand";
 
 export interface AppConfig {
   label: string;
@@ -17,7 +18,7 @@ export interface AppConfig {
   badgeClass: string;
 }
 
-export const APP_IDS: AppId[] = [
+const UPSTREAM_APP_IDS: AppId[] = [
   "claude",
   "claude-desktop",
   "codex",
@@ -34,7 +35,10 @@ export const APP_IDS: AppId[] = [
   "omp",
 ];
 
-export const DEFAULT_VISIBLE_APPS: VisibleApps = {
+/** WendingAI 纯净版：只保留品牌层启用的应用（见 `src/brand/brand.ts`） */
+export const APP_IDS: AppId[] = UPSTREAM_APP_IDS.filter(isBrandAppEnabled);
+
+const UPSTREAM_DEFAULT_VISIBLE_APPS: VisibleApps = {
   claude: true,
   "claude-desktop": true,
   codex: true,
@@ -50,6 +54,19 @@ export const DEFAULT_VISIBLE_APPS: VisibleApps = {
   agy: true,
   omp: true,
 };
+
+/** 把品牌层未启用的应用强制设为不可见 */
+export function applyBrandVisibility(visible: VisibleApps): VisibleApps {
+  const next = { ...visible };
+  for (const app of Object.keys(next) as Array<keyof VisibleApps>) {
+    if (!isBrandAppEnabled(app as AppId)) next[app] = false;
+  }
+  return next;
+}
+
+export const DEFAULT_VISIBLE_APPS: VisibleApps = applyBrandVisibility(
+  UPSTREAM_DEFAULT_VISIBLE_APPS,
+);
 
 /**
  * 应用页和侧栏的应用顺序：先按用户拖出来的顺序（`settings.appOrder`，不认识的 ID 忽略），
@@ -177,7 +194,7 @@ export function usesEditorView(appId: AppId): boolean {
   return EDITOR_VIEW_APP_IDS.includes(appId);
 }
 
-/** Claude Desktop、OpenClaw 不由 CC Switch 管理 MCP；Pi 1.0 起内置 MCP（`~/.pi/agent/mcp.json`） */
+/** Claude Desktop、OpenClaw 不由 WendingAI Switch 管理 MCP；Pi 1.0 起内置 MCP（`~/.pi/agent/mcp.json`） */
 export type McpAppId = Exclude<AppId, "claude-desktop" | "openclaw">;
 export const MCP_APP_IDS: McpAppId[] = [
   "claude",

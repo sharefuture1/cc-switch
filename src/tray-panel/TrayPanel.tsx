@@ -1027,7 +1027,7 @@ export function TrayPanel() {
           data-other-item
           className="flex shrink-0 items-center px-4 pb-2 pt-3"
         >
-          <span className="text-[15px] font-semibold">CC Switch</span>
+          <span className="text-[15px] font-semibold">WendingAI Switch</span>
           <button
             type="button"
             title={texts.settings}

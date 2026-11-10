@@ -260,7 +260,8 @@ describe("PPIO provider presets", () => {
     );
   });
 
-  it("registers the PPIO brand icon", () => {
+  // WendingAI：该图标属于合作推广品牌，已由 scripts/brand-apply.mjs 移除
+  it.skip("registers the PPIO brand icon", () => {
     expect(getIcon("ppio")).toContain("<title>PPIO</title>");
     expect(getIconMetadata("ppio")).toMatchObject({
       displayName: "PPIO",

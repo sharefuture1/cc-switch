@@ -1,3 +1,4 @@
+import { BRAND } from "@/brand/brand";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -18,7 +19,10 @@ import { useSettingsQuery } from "@/lib/query";
 import { markSeen } from "@/lib/whatsNew";
 import type { Settings } from "@/types";
 
-const RELEASES_URL = "https://github.com/farion1231/cc-switch/releases";
+// WendingAI：纯净版指向 WendingAI 官网，不引导到上游发布页
+const RELEASES_URL = __WENDING_PURE__
+  ? BRAND.websiteUrl
+  : "https://github.com/farion1231/cc-switch/releases";
 
 /** 任一应用的数据库里已经有供应商（找到一家就停） */
 async function hasAnyProvider(): Promise<boolean> {

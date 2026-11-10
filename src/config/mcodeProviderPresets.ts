@@ -126,7 +126,7 @@ export const mcodeOnlyPiPresets: PiProviderPreset[] = [
 
 const mcodeSourcePresets = [...piProviderPresets, ...mcodeOnlyPiPresets];
 
-export const mcodeProviderPresets: McodeProviderPreset[] =
+const upstreamMcodeProviderPresets = (): McodeProviderPreset[] =>
   mcodeSourcePresets.flatMap((preset) => {
     const config = preset.settingsConfig;
     const api = MCODE_API_FORMATS.find((format) => format === config.api);
@@ -172,3 +172,11 @@ export const mcodeProviderPresets: McodeProviderPreset[] =
       },
     ];
   });
+
+/**
+ * WendingAI 纯净版：对外只暴露品牌预设（见 `src/brand/presets.ts`）；
+ * 上游预设保留为 `upstreamMcodeProviderPresets`，便于与上游合并，构建时会被 tree-shake 掉。
+ */
+export const mcodeProviderPresets: McodeProviderPreset[] = __WENDING_PURE__
+  ? []
+  : upstreamMcodeProviderPresets();

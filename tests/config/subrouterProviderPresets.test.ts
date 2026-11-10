@@ -124,7 +124,8 @@ describe("SubRouter provider presets", () => {
     expect(preset?.modelRoutes?.length).toBeGreaterThan(0);
   });
 
-  it("registers the SubRouter provider icon", () => {
+  // WendingAI：该图标属于合作推广品牌，已由 scripts/brand-apply.mjs 移除
+  it.skip("registers the SubRouter provider icon", () => {
     expect(hasIcon("subrouter")).toBe(true);
   });
 });

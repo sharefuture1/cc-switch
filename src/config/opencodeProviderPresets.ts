@@ -328,7 +328,7 @@ export const OPENCODE_PRESET_MODEL_VARIANTS: Record<
   ],
 };
 
-export const opencodeProviderPresets: OpenCodeProviderPreset[] = [
+const upstreamOpencodeProviderPresets = (): OpenCodeProviderPreset[] => [
   {
     name: "TokenPlus",
     websiteUrl: "https://www.tokenplus.cn/",
@@ -4929,3 +4929,10 @@ export const opencodeProviderPresets: OpenCodeProviderPreset[] = [
     icon: "aicoming",
   },
 ];
+
+/**
+ * WendingAI 纯净版：对外只暴露品牌预设（见 `src/brand/presets.ts`）；
+ * 上游预设保留为 `upstreamOpencodeProviderPresets`，便于与上游合并，构建时会被 tree-shake 掉。
+ */
+export const opencodeProviderPresets: OpenCodeProviderPreset[] =
+  __WENDING_PURE__ ? [] : upstreamOpencodeProviderPresets();

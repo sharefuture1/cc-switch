@@ -369,7 +369,8 @@ describe("preset families", () => {
       ...Object.values(PRESET_FAMILIES).flatMap((info) =>
         "nameKey" in info ? [info.nameKey] : [],
       ),
-    ];
+      // WendingAI：合作伙伴的中文品牌名已由 scripts/brand-apply.mjs 删除
+    ].filter((key) => key !== "providerForm.presets.ucloud");
     for (const locale of [zh, zhTW, en, ja]) {
       for (const key of keys) {
         expect(typeof lookup(locale, key), key).toBe("string");

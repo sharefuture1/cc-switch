@@ -199,7 +199,8 @@ describe("JieKou AI provider presets", () => {
     );
   });
 
-  it("registers the JieKou AI brand icon", () => {
+  // WendingAI：该图标属于合作推广品牌，已由 scripts/brand-apply.mjs 移除
+  it.skip("registers the JieKou AI brand icon", () => {
     expect(getIcon("jiekou")).toContain("<title>JieKou AI</title>");
     expect(getIconMetadata("jiekou")).toMatchObject({
       displayName: "JieKou AI",

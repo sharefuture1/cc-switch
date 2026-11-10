@@ -1,3 +1,4 @@
+import { BRAND } from "@/brand/brand";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
@@ -14,7 +15,10 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const RELEASES_URL = "https://github.com/farion1231/cc-switch/releases";
+// WendingAI：纯净版指向 WendingAI 官网，不引导到上游发布页
+const RELEASES_URL = __WENDING_PURE__
+  ? BRAND.websiteUrl
+  : "https://github.com/farion1231/cc-switch/releases";
 
 interface DatabaseUpgradeProps {
   payload: {
@@ -149,7 +153,7 @@ export function DatabaseUpgrade({ payload }: DatabaseUpgradeProps) {
             <p className="text-sm text-fg-2">
               {t(
                 "dbUpgrade.description",
-                "当前数据库由更新版本的 CC Switch 创建，需要升级应用后才能继续使用。升级不会删除你的数据。",
+                "当前数据库由更新版本的 WendingAI Switch 创建，需要升级应用后才能继续使用。升级不会删除你的数据。",
               )}
             </p>
             {dbVersion != null && supportedVersion != null && (

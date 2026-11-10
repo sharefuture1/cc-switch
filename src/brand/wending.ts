@@ -1,0 +1,270 @@
+/**
+ * WendingAI 账户逻辑：粘贴 Key → 验证 → 写统一供应商 → 同步并切换 Claude / Codex / Gemini；额度查询。
+ */
+import { providersApi, universalProvidersApi } from "@/lib/api";
+import { subscriptionApi } from "@/lib/api/subscription";
+import { fetchModelsForConfig } from "@/lib/api/model-fetch";
+import type {
+  UniversalProvider,
+  UniversalProviderModels,
+  UsageData,
+  UsageResult,
+} from "@/types";
+import { BRAND, WENDING_DEFAULT_MODELS } from "./brand";
+
+export const WENDING_APPS = ["claude", "codex", "gemini"] as const;
+export type WendingApp = (typeof WENDING_APPS)[number];
+
+export function childProviderId(app: WendingApp): string {
+  return `universal-${app}-${BRAND.universalProviderId}`;
+}
+
+export interface QuotaLine {
+  remaining?: number;
+  used?: number;
+  total?: number;
+  unit: string;
+  unlimited?: boolean;
+}
+
+export type WendingQuota =
+  | { status: "ok"; account?: QuotaLine; key: QuotaLine; checkedAt: number }
+  | { status: "invalid"; message: string; checkedAt: number }
+  | { status: "error"; message: string; checkedAt: number };
+
+function toLine(d: UsageData | undefined): QuotaLine | undefined {
+  if (!d) return undefined;
+  let unlimited = false;
+  if (d.extra) {
+    try {
+      unlimited = Boolean(JSON.parse(d.extra)?.unlimited);
+    } catch {
+      // extra 不是 JSON 时忽略
+    }
+  }
+  return {
+    remaining: d.remaining ?? undefined,
+    used: d.used ?? undefined,
+    total: d.total ?? undefined,
+    unit: d.unit || "USD",
+    unlimited,
+  };
+}
+
+/** 把后端 get_balance 的结果整理成界面需要的结构 */
+export function normalizeQuota(
+  result: UsageResult,
+  now = Date.now(),
+): WendingQuota {
+  const data = result.data ?? [];
+  const keyData =
+    data.find((d) => d.planName === "key") ?? data[data.length - 1];
+  if (!result.success) {
+    if (keyData && keyData.isValid === false) {
+      return {
+        status: "invalid",
+        message: keyData.invalidMessage || result.error || "Invalid key",
+        checkedAt: now,
+      };
+    }
+    return {
+      status: "error",
+      message: result.error || "Unknown error",
+      checkedAt: now,
+    };
+  }
+  if (keyData && keyData.isValid === false) {
+    return {
+      status: "invalid",
+      message: keyData.invalidMessage || "Invalid key",
+      checkedAt: now,
+    };
+  }
+  const key = toLine(keyData) ?? { unit: "USD" };
+  const account = toLine(data.find((d) => d.planName === "account"));
+  return { status: "ok", account, key, checkedAt: now };
+}
+
+/** 查询额度。网络等瞬时错误也整理成 status: "error"，不抛异常 */
+export async function queryWendingQuota(
+  apiKey: string,
+  baseUrl: string = BRAND.defaultEndpoint,
+): Promise<WendingQuota> {
+  try {
+    const result = await subscriptionApi.getBalance(baseUrl, apiKey.trim());
+    return normalizeQuota(result);
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : String(error),
+      checkedAt: Date.now(),
+    };
+  }
+}
+
+/** 格式化金额 */
+export function formatAmount(value: number | undefined, unit: string): string {
+  if (value === undefined || Number.isNaN(value)) return "—";
+  if (unit === "tokens") return `${Math.round(value).toLocaleString()} tokens`;
+  const symbol = unit === "CNY" ? "¥" : "$";
+  return `${symbol}${value.toFixed(2)}`;
+}
+
+const MODEL_RULES: Record<string, RegExp[]> = {
+  claudeSonnet: [/^claude-sonnet-4-5/, /^claude-sonnet/, /sonnet/],
+  claudeOpus: [/^claude-opus-4-5/, /^claude-opus/, /opus/],
+  claudeHaiku: [/^claude-haiku-4-5/, /^claude-haiku/, /haiku/],
+  codex: [/^gpt-5\.5$/, /^gpt-5\.\d+-codex$/, /^gpt-5\.\d+$/, /^gpt-5/],
+  gemini: [/^gemini-2\.5-pro$/, /^gemini-.*-pro/, /^gemini/],
+};
+
+function pick(ids: string[], rules: RegExp[], fallback: string): string {
+  if (ids.includes(fallback)) return fallback;
+  for (const rule of rules) {
+    const hit = ids.find((id) => rule.test(id));
+    if (hit) return hit;
+  }
+  return fallback;
+}
+
+/** 根据账号可用的模型列表挑选各 CLI 的默认模型；列表为空时用默认值 */
+export function pickModels(modelIds: string[]): UniversalProviderModels {
+  const ids = modelIds.map((m) => m.trim()).filter(Boolean);
+  const d = WENDING_DEFAULT_MODELS;
+  if (ids.length === 0) {
+    return {
+      claude: { ...d.claude },
+      codex: { ...d.codex },
+      gemini: { ...d.gemini },
+    };
+  }
+  const sonnet = pick(ids, MODEL_RULES.claudeSonnet, d.claude.sonnetModel);
+  return {
+    claude: {
+      model: sonnet,
+      sonnetModel: sonnet,
+      opusModel: pick(ids, MODEL_RULES.claudeOpus, d.claude.opusModel),
+      haikuModel: pick(ids, MODEL_RULES.claudeHaiku, d.claude.haikuModel),
+    },
+    codex: {
+      model: pick(ids, MODEL_RULES.codex, d.codex.model),
+      reasoningEffort: d.codex.reasoningEffort,
+    },
+    gemini: { model: pick(ids, MODEL_RULES.gemini, d.gemini.model) },
+  };
+}
+
+export function buildWendingProvider(
+  apiKey: string,
+  baseUrl: string,
+  models: UniversalProviderModels,
+  existing?: UniversalProvider | null,
+): UniversalProvider {
+  return {
+    id: BRAND.universalProviderId,
+    name: BRAND.shortName,
+    providerType: BRAND.providerType,
+    apps: { claude: true, codex: true, gemini: true },
+    baseUrl: baseUrl.trim().replace(/\/+$/, ""),
+    apiKey: apiKey.trim(),
+    models,
+    websiteUrl: BRAND.websiteUrl,
+    icon: "wendingai",
+    iconColor: BRAND.iconColor,
+    notes: existing?.notes,
+    meta: {
+      ...(existing?.meta ?? {}),
+      usage_script: {
+        enabled: true,
+        language: "javascript",
+        code: "",
+        templateType: "balance",
+        autoQueryInterval: 10,
+      },
+    },
+    createdAt: existing?.createdAt ?? Date.now(),
+    sortIndex: existing?.sortIndex ?? 0,
+  };
+}
+
+export async function getWendingProvider(): Promise<UniversalProvider | null> {
+  try {
+    return await universalProvidersApi.get(BRAND.universalProviderId);
+  } catch {
+    return null;
+  }
+}
+
+export type SetupStage = "verifying" | "configuring";
+
+export class WendingSetupError extends Error {
+  constructor(
+    public readonly kind: "empty" | "invalid" | "network",
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+export interface SetupResult {
+  quota: WendingQuota;
+  failedApps: Array<{ app: WendingApp; error: string }>;
+}
+
+/**
+ * 一步配置：验证 Key → 选模型 → 保存统一供应商 → 同步到三个 CLI → 切换为当前供应商。
+ */
+export async function setupWendingKey(
+  apiKey: string,
+  baseUrl: string = BRAND.defaultEndpoint,
+  onStage?: (stage: SetupStage) => void,
+): Promise<SetupResult> {
+  const key = apiKey.trim();
+  if (!key) throw new WendingSetupError("empty", "API key is empty");
+
+  onStage?.("verifying");
+  const quota = await queryWendingQuota(key, baseUrl);
+  if (quota.status === "invalid") {
+    throw new WendingSetupError("invalid", quota.message);
+  }
+  if (quota.status === "error") {
+    throw new WendingSetupError("network", quota.message);
+  }
+
+  onStage?.("configuring");
+  let modelIds: string[] = [];
+  try {
+    const models = await fetchModelsForConfig(`${baseUrl}/v1`, key);
+    modelIds = models.map((m) => m.id);
+  } catch {
+    // 拿不到模型列表时使用默认模型
+  }
+
+  const existing = await getWendingProvider();
+  const provider = buildWendingProvider(
+    key,
+    baseUrl,
+    pickModels(modelIds),
+    existing,
+  );
+  await universalProvidersApi.upsert(provider);
+
+  const failedApps: SetupResult["failedApps"] = [];
+  try {
+    await universalProvidersApi.sync(provider.id);
+  } catch (error) {
+    // 同步会逐个应用写入，个别应用失败时继续尝试切换
+    console.warn("[wending] sync failed", error);
+  }
+  for (const app of WENDING_APPS) {
+    try {
+      await providersApi.switch(childProviderId(app), app);
+    } catch (error) {
+      failedApps.push({
+        app,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+  return { quota, failedApps };
+}

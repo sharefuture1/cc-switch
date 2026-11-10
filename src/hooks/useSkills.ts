@@ -567,7 +567,7 @@ export function useResyncSkillsToApps() {
 }
 
 /**
- * CC Switch 目录下放 Skill 主副本的真实路径（改过配置目录就是改后的）
+ * WendingAI Switch 目录下放 Skill 主副本的真实路径（改过配置目录就是改后的）
  */
 export function useCcSwitchSkillsDir(enabled = true) {
   return useQuery({

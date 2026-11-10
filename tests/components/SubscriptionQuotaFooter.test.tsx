@@ -296,7 +296,7 @@ describe("credential failures", () => {
     expect(screen.getByText("请运行 claude 命令刷新登录")).toBeInTheDocument();
   });
 
-  it("points accounts CC Switch manages to Accounts instead of a command", () => {
+  it("points accounts WendingAI Switch manages to Accounts instead of a command", () => {
     render(
       <I18nextProvider i18n={i18n}>
         <SubscriptionQuotaView

@@ -101,7 +101,7 @@ export const openclawApiProtocols = [
 /**
  * OpenClaw provider presets list
  */
-export const openclawProviderPresets: OpenClawProviderPreset[] = [
+const upstreamOpenclawProviderPresets = (): OpenClawProviderPreset[] => [
   {
     name: "TokenPlus",
     websiteUrl: "https://www.tokenplus.cn/",
@@ -7438,3 +7438,10 @@ export const openclawProviderPresets: OpenClawProviderPreset[] = [
     icon: "aicoming",
   },
 ];
+
+/**
+ * WendingAI 纯净版：对外只暴露品牌预设（见 `src/brand/presets.ts`）；
+ * 上游预设保留为 `upstreamOpenclawProviderPresets`，便于与上游合并，构建时会被 tree-shake 掉。
+ */
+export const openclawProviderPresets: OpenClawProviderPreset[] =
+  __WENDING_PURE__ ? [] : upstreamOpenclawProviderPresets();
