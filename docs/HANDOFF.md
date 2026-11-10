@@ -1,6 +1,6 @@
 # WendingAI Switch 交接文档（P0 + P1）
 
-更新时间：2026-11-10 07:40 EST（America/New_York）
+更新时间：2026-11-10 08:08 EST（America/New_York）
 仓库：https://github.com/sharefuture1/cc-switch，分支 `wendingai`（基于上游 tag `v4.0.28`）
 `main` 只做上游镜像（与 farion1231/cc-switch main 一致），不在上面开发。提交身份：sharefuture1（noreply 邮箱，仓库本地配置）。
 
@@ -42,7 +42,36 @@
 | `pnpm tauri build --bundles deb,appimage` | 通过：`WendingAI Switch_4.0.28_amd64.deb`（18 MB）、`.AppImage`（117 MB） |
 | Xvfb 启动 release 二进制（隔离 HOME） | 引导弹窗正常；输入无效 Key 显示“Key 无效或已停用”，未写入 ~/.claude / ~/.codex / ~/.gemini；日志中无 Key。截图：`docs/wendingai/onboarding*.png` |
 
-未做：真实 Key 的端到端（没有真实 Key）；macOS / Windows 打包与签名；`cargo clippy`。
+未做：macOS / Windows 打包与签名；`cargo clippy`。
+
+## 2b. 真实 Key 端到端测试（2026-11-10 07:44–08:10 EST）
+
+测试 Key 只通过环境变量传入，未打印、未写入仓库 / 日志 / 截图（截图只显示打码 Key）；已用 `git grep` 和日志检查确认不含 Key。
+测试前 `~/.claude` 不存在，`~/.codex`、`~/.gemini` 里只有刚执行 `--version` 产生的临时文件，没有用户配置需要备份。
+
+- Key 可用模型（`/v1/models`）：`laotalk-fast`、`laotalk-quality`、`laotalk-vision`。`/v1/chat/completions`、`/v1/responses`、`/v1/messages`、Gemini `v1beta generateContent` 四种格式各发一次极小请求均成功。
+- **发现并修复**（commit `6c4e6f4`）：原 `pickModels` 在列表里找不到 claude-* / gpt-5* / gemini-* 时回退到内置默认模型，而该 Key 无权访问这些模型（服务端返回“该令牌无权访问模型”）。现在改为：已知模型族 → 通用主力（quality/pro…）/ 快速（fast/mini…）关键词 → 第一个对话模型（排除 vision 等）；新增单测。
+- 控制台链接修正（commit `8bcff68`）：`/keys`、`/wallet`。
+- 引导流程：在 Xvfb 中启动 release 二进制（真实 HOME），粘贴 Key → 验证并配置成功，三个 CLI 的配置由应用写入：
+  - `~/.claude/settings.json`：`ANTHROPIC_BASE_URL=https://api.wending.ai`，`ANTHROPIC_AUTH_TOKEN`（Key），`ANTHROPIC_MODEL` / SONNET / OPUS = `laotalk-quality`，HAIKU = `laotalk-fast`
+  - `~/.codex/config.toml`：`model = "laotalk-quality"`，`model_reasoning_effort = "high"`，`base_url = "https://api.wending.ai/v1"`，`wire_api = "responses"`，Key 写在 `experimental_bearer_token`（不生成 auth.json）
+  - `~/.gemini/.env`：`GOOGLE_GEMINI_BASE_URL=https://api.wending.ai`，`GEMINI_MODEL=laotalk-quality`；`settings.json` 选择 `gemini-api-key`
+- 额度显示：引导后显示 “Key 剩余 $9.67，已用 $0.33”；测试后显示 “$9.34，已用 $0.66”，与 `/api/usage/token/` 原始值 ÷ `quota_per_unit`(500000) 一致（$9.3408 / 总额 $10.00）。
+- 真实调用（shell 中没有任何 ANTHROPIC_/OPENAI_/GEMINI_ 环境变量，只靠应用写的配置）：
+
+| 命令 | 结果 |
+| --- | --- |
+| `claude -p 'reply with OK' --max-turns 1`（Claude Code 2.1.197） | 通过，回复 `OK`；JSON 输出显示使用 `laotalk-quality` + `laotalk-fast`，约 $0.012 |
+| `codex exec --skip-git-repo-check 'reply with OK'`（codex-cli 0.167.0） | 通过，回复 `OK`；provider custom，模型 laotalk-quality，8,550 tokens |
+| `gemini -p 'reply with OK'`（gemini-cli 0.67.0） | 失败：未受信任目录下 Gemini CLI 不读取 `~/.gemini/.env`（CLI 自身的文件夹信任机制） |
+| `gemini --skip-trust -p 'reply with OK'` | 通过，回复 `OK`（同一份应用写入的配置） |
+
+- 修复后重新验证：`pnpm typecheck` 通过；`pnpm format:check` 通过；`pnpm test:unit` 3748 通过 / 9 跳过；`pnpm tauri build --bundles deb,appimage` 通过；`scripts/check-brand.sh` 通过。（Rust 代码本轮未改动。）
+
+已知小问题：
+- Codex 提示 “Model metadata for `laotalk-quality` not found”，使用默认元数据，不影响调用；以后可在 Codex 配置里补模型元数据或由服务端提供 OpenAI 风格的模型名。
+- Gemini CLI 在未受信任目录的非交互模式下需要 `--skip-trust` / `GEMINI_CLI_TRUST_WORKSPACE=true`，或在交互模式里信任该目录；应用目前不改用户的信任设置（P2 可在界面加提示）。
+- 背景里仍显示上游 “Claude Official” 卡片（P2 隐藏）。
 
 ## 3. 安全说明
 - Key 明文存储（与上游一致）：`~/.wendingai/cc-switch.db`（SQLite）以及各 CLI 自己的配置文件（`~/.claude/settings.json`、`~/.codex/auth.json`、`~/.gemini/.env`）。CLI 本身需要明文读取。界面只显示打码 Key（≤12 位整串隐藏）。
@@ -50,8 +79,8 @@
 - 上游远端 push 地址已设为 `DISABLED`，防止误推。
 
 ## 4. 仍是占位 / 待确认
-- 默认模型：Codex `gpt-5.5`（参考 wending-codex-launcher）；Claude（claude-sonnet-4-5 等）与 Gemini（gemini-2.5-pro）为猜测，引导时会按 `/v1/models` 自动匹配。
-- 控制台链接 `/console/token`、`/console/topup` 按 new-api 默认路径推断，需确认。
+- 内置默认模型（claude-sonnet-4-5 / gpt-5.5 / gemini-2.5-pro）只在拿不到 `/v1/models` 时使用；测试 Key 无权访问这些模型，正常流程按 Key 实际可用模型选择。
+- 控制台链接已确认：前端把旧路由 `/console/token`、`/console/topup` 重定向到 `/keys`、`/wallet`，现已直接使用后者（SPA 路由，HTTP 200）。
 - 应用图标是“白底圆角 + 黑色 W”自动生成；`dmg-background.png` 未换。正式设计稿到位后替换 `assets/brand/` 并重跑 `pnpm tauri icon`。
 - 发布流水线（release.yml）只做了改名，未验证；签名、公证、自有更新源都没配。
 - 模型别名（显示友好名称）未做，放 P3。
