@@ -118,16 +118,34 @@ const MODEL_RULES: Record<string, RegExp[]> = {
   gemini: [/^gemini-2\.5-pro$/, /^gemini-.*-pro/, /^gemini/],
 };
 
-function pick(ids: string[], rules: RegExp[], fallback: string): string {
-  if (ids.includes(fallback)) return fallback;
+/** 不适合做对话默认模型的（视觉专用、向量、图片、语音等） */
+const NON_CHAT_MODEL =
+  /vision|embed|image|dall-?e|tts|whisper|audio|speech|rerank|moderation|sora|video/i;
+/** 通用“主力”模型关键词（WendingAI 自有模型名，例如 laotalk-quality） */
+const MAIN_HINT = /quality|pro|max|plus|large|ultra/i;
+/** 通用“快速”模型关键词（例如 laotalk-fast），用于 Claude Code 的 haiku 档 */
+const FAST_HINT = /fast|mini|lite|flash|small|turbo|haiku/i;
+
+function pickByRules(ids: string[], rules: RegExp[], preferred: string) {
+  if (ids.includes(preferred)) return preferred;
   for (const rule of rules) {
     const hit = ids.find((id) => rule.test(id));
     if (hit) return hit;
   }
-  return fallback;
+  return undefined;
 }
 
-/** 根据账号可用的模型列表挑选各 CLI 的默认模型；列表为空时用默认值 */
+function pickGeneric(ids: string[], hint: RegExp): string | undefined {
+  const chat = ids.filter((id) => !NON_CHAT_MODEL.test(id));
+  const pool = chat.length > 0 ? chat : ids;
+  return pool.find((id) => hint.test(id)) ?? pool[0];
+}
+
+/**
+ * 根据 Key 可用的模型列表（/v1/models）挑选各 CLI 的默认模型。
+ * 顺序：已知模型族（claude-* / gpt-5* / gemini-*）→ 通用主力 / 快速关键词 → 列表第一个对话模型。
+ * 只有拿不到模型列表时才使用内置默认值，保证写入的模型一定是这个 Key 能访问的。
+ */
 export function pickModels(modelIds: string[]): UniversalProviderModels {
   const ids = modelIds.map((m) => m.trim()).filter(Boolean);
   const d = WENDING_DEFAULT_MODELS;
@@ -138,19 +156,26 @@ export function pickModels(modelIds: string[]): UniversalProviderModels {
       gemini: { ...d.gemini },
     };
   }
-  const sonnet = pick(ids, MODEL_RULES.claudeSonnet, d.claude.sonnetModel);
+  const main = pickGeneric(ids, MAIN_HINT) as string;
+  const fast = pickGeneric(ids, FAST_HINT) ?? main;
+  const sonnet =
+    pickByRules(ids, MODEL_RULES.claudeSonnet, d.claude.sonnetModel) ?? main;
   return {
     claude: {
       model: sonnet,
       sonnetModel: sonnet,
-      opusModel: pick(ids, MODEL_RULES.claudeOpus, d.claude.opusModel),
-      haikuModel: pick(ids, MODEL_RULES.claudeHaiku, d.claude.haikuModel),
+      opusModel:
+        pickByRules(ids, MODEL_RULES.claudeOpus, d.claude.opusModel) ?? main,
+      haikuModel:
+        pickByRules(ids, MODEL_RULES.claudeHaiku, d.claude.haikuModel) ?? fast,
     },
     codex: {
-      model: pick(ids, MODEL_RULES.codex, d.codex.model),
+      model: pickByRules(ids, MODEL_RULES.codex, d.codex.model) ?? main,
       reasoningEffort: d.codex.reasoningEffort,
     },
-    gemini: { model: pick(ids, MODEL_RULES.gemini, d.gemini.model) },
+    gemini: {
+      model: pickByRules(ids, MODEL_RULES.gemini, d.gemini.model) ?? main,
+    },
   };
 }
 

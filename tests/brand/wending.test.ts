@@ -147,6 +147,24 @@ describe("pickModels", () => {
   });
 });
 
+describe("pickModels with WendingAI-only models", () => {
+  it("uses models the key can access instead of inaccessible defaults", () => {
+    const m = pickModels(["laotalk-fast", "laotalk-quality", "laotalk-vision"]);
+    expect(m.claude?.model).toBe("laotalk-quality");
+    expect(m.claude?.sonnetModel).toBe("laotalk-quality");
+    expect(m.claude?.opusModel).toBe("laotalk-quality");
+    expect(m.claude?.haikuModel).toBe("laotalk-fast");
+    expect(m.codex?.model).toBe("laotalk-quality");
+    expect(m.gemini?.model).toBe("laotalk-quality");
+  });
+
+  it("never picks a vision-only model when a chat model exists", () => {
+    const m = pickModels(["x-vision", "x-chat"]);
+    expect(m.claude?.model).toBe("x-chat");
+    expect(m.claude?.haikuModel).toBe("x-chat");
+  });
+});
+
 describe("buildWendingProvider", () => {
   it("builds a universal provider for the three CLIs", () => {
     const p = buildWendingProvider(
