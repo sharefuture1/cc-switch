@@ -21,6 +21,33 @@ pub const LOG_FILE_STEM: &str = "wendingai-switch";
 
 pub const USER_AGENT: &str = concat!("WendingAI-Switch/", env!("CARGO_PKG_VERSION"));
 
+/// 使用 sub2api 网关（独立账户体系，额度接口为 `GET /v1/usage`）的 WendingAI 线路。
+/// 其余 *.wending.ai 地址按 new-api（`/api/usage/token/`）处理。
+pub const SUB2API_HOSTS: &[&str] = &["api14.wending.ai"];
+
+/// 取地址里的主机名（小写，不含端口 / 账号）
+pub fn host_of(url: &str) -> String {
+    let lower = url.trim().to_ascii_lowercase();
+    let rest = lower
+        .strip_prefix("https://")
+        .or_else(|| lower.strip_prefix("http://"))
+        .unwrap_or(&lower);
+    let host = rest
+        .split(['/', '?', '#'])
+        .next()
+        .unwrap_or("")
+        .rsplit('@')
+        .next()
+        .unwrap_or("");
+    host.split(':').next().unwrap_or("").to_string()
+}
+
+/// 是否为 sub2api 线路（如 api14.wending.ai）
+pub fn is_sub2api_url(url: &str) -> bool {
+    let host = host_of(url);
+    SUB2API_HOSTS.contains(&host.as_str())
+}
+
 /// 判断地址是否属于 WendingAI（api.wending.ai 及 *.wending.ai）
 pub fn is_wending_url(url: &str) -> bool {
     let lower = url.trim().to_ascii_lowercase();
@@ -84,6 +111,15 @@ mod tests {
         assert!(!is_wending_url("https://api.wending.ai.evil.com"));
         assert!(!is_wending_url("https://evil.com/?u=api.wending.ai"));
         assert!(!is_wending_url("https://notwending.ai"));
+    }
+
+    #[test]
+    fn detects_sub2api_lines() {
+        assert!(is_sub2api_url("https://api14.wending.ai"));
+        assert!(is_sub2api_url("https://API14.wending.ai/v1/"));
+        assert!(!is_sub2api_url("https://api.wending.ai"));
+        assert!(!is_sub2api_url("https://api14.wending.ai.evil.com"));
+        assert!(is_wending_url("https://api14.wending.ai"));
     }
 
     #[test]

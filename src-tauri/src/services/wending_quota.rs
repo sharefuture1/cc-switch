@@ -191,6 +191,98 @@ async fn fetch_display(origin: &str) -> QuotaDisplay {
     }
 }
 
+/// 解析 sub2api `GET /v1/usage` 的响应（api14 等线路）。
+///
+/// - `quota_limited`：Key 设置了总额度 → `quota.{limit,used,remaining}`（美元）
+/// - `unrestricted` 钱包模式：`balance` 为账户余额，Key 本身不限额
+/// - `unrestricted` 订阅模式：`planName` 为套餐名，`remaining` 为本周期剩余
+pub fn parse_sub2api_usage(body: &serde_json::Value) -> UsageResult {
+    if body.get("isValid").and_then(|v| v.as_bool()) == Some(false) {
+        let status = body
+            .get("status")
+            .and_then(|v| v.as_str())
+            .unwrap_or("inactive");
+        return UsageResult {
+            success: false,
+            data: Some(vec![UsageData {
+                plan_name: Some("key".to_string()),
+                extra: None,
+                is_valid: Some(false),
+                invalid_message: Some(format!("API key {status}")),
+                total: None,
+                used: None,
+                remaining: None,
+                unit: None,
+            }]),
+            error: Some(format!("API key {status}")),
+        };
+    }
+    if body.get("mode").is_none() && body.get("remaining").is_none() {
+        let msg = body
+            .get("message")
+            .or_else(|| body.get("error").and_then(|e| e.get("message")))
+            .and_then(|m| m.as_str())
+            .unwrap_or("Unexpected response");
+        return error_result(format!("WendingAI: {msg}"));
+    }
+    let unit = body
+        .get("unit")
+        .and_then(|v| v.as_str())
+        .unwrap_or("USD")
+        .to_string();
+    let total_cost = body
+        .get("usage")
+        .and_then(|u| u.get("total"))
+        .and_then(|t| num(t, "actual_cost").or_else(|| num(t, "cost")));
+    let mut out = Vec::new();
+    let quota = body.get("quota").filter(|q| q.is_object());
+    let balance = num(body, "balance");
+    if let Some(balance) = balance {
+        out.push(UsageData {
+            plan_name: Some("account".to_string()),
+            extra: None,
+            is_valid: Some(true),
+            invalid_message: None,
+            total: None,
+            used: None,
+            remaining: Some(round2(balance)),
+            unit: Some(unit.clone()),
+        });
+    }
+    let (remaining, used, total, unlimited) = if let Some(q) = quota {
+        (
+            num(q, "remaining"),
+            num(q, "used").or(total_cost),
+            num(q, "limit"),
+            false,
+        )
+    } else if balance.is_some() {
+        // 钱包模式：Key 不单独限额，用账户余额
+        (None, total_cost, None, true)
+    } else {
+        (num(body, "remaining"), total_cost, None, false)
+    };
+    let plan = body.get("planName").and_then(|v| v.as_str());
+    out.push(UsageData {
+        plan_name: Some("key".to_string()),
+        extra: Some(
+            serde_json::json!({ "unlimited": unlimited, "plan": plan, "gateway": "sub2api" })
+                .to_string(),
+        ),
+        is_valid: Some(true),
+        invalid_message: None,
+        total: total.map(round2),
+        used: used.map(round2),
+        remaining: remaining.map(round2),
+        unit: Some(unit),
+    });
+    UsageResult {
+        success: true,
+        data: Some(out),
+        error: None,
+    }
+}
+
 /// 查询 WendingAI Key 的额度
 pub async fn query(base_url: &str, api_key: &str) -> Result<UsageResult, String> {
     let key = api_key.trim();
@@ -198,11 +290,21 @@ pub async fn query(base_url: &str, api_key: &str) -> Result<UsageResult, String>
         return Ok(error_result("API key is empty".to_string()));
     }
     let origin = crate::brand::origin_of(base_url);
-    let display = fetch_display(&origin).await;
+    let sub2api = crate::brand::is_sub2api_url(&origin);
+    let display = if sub2api {
+        QuotaDisplay::default()
+    } else {
+        fetch_display(&origin).await
+    };
+    let path = if sub2api {
+        "/v1/usage"
+    } else {
+        "/api/usage/token/"
+    };
 
     let client = crate::proxy::http_client::get();
     let resp = client
-        .get(format!("{origin}/api/usage/token/"))
+        .get(format!("{origin}{path}"))
         .header("Authorization", format!("Bearer {key}"))
         .header("Accept", "application/json")
         .header("User-Agent", crate::brand::USER_AGENT)
@@ -254,6 +356,7 @@ pub async fn query(base_url: &str, api_key: &str) -> Result<UsageResult, String>
         )));
     }
     match body {
+        Some(b) if sub2api => Ok(parse_sub2api_usage(&b)),
         Some(b) => Ok(parse_token_usage(&b, &display)),
         None => Ok(error_result("Failed to parse response".to_string())),
     }
@@ -329,6 +432,70 @@ mod tests {
         );
         assert!(!r.success);
         assert!(r.error.unwrap().contains("Invalid token"));
+    }
+
+    #[test]
+    fn parses_sub2api_quota_limited() {
+        let body = json!({"mode": "quota_limited", "isValid": true, "status": "active",
+            "quota": {"limit": 20.0, "used": 4.5, "remaining": 15.5, "unit": "USD"},
+            "remaining": 15.5, "unit": "USD"});
+        let r = parse_sub2api_usage(&body);
+        assert!(r.success);
+        let data = r.data.unwrap();
+        assert_eq!(data.len(), 1);
+        assert_eq!(data[0].remaining, Some(15.5));
+        assert_eq!(data[0].used, Some(4.5));
+        assert_eq!(data[0].total, Some(20.0));
+    }
+
+    #[test]
+    fn parses_sub2api_wallet() {
+        let body = json!({"mode": "unrestricted", "isValid": true, "planName": "钱包余额",
+            "remaining": 12.345, "unit": "USD", "balance": 12.345,
+            "usage": {"total": {"cost": 3.0, "actual_cost": 2.5}}});
+        let data = parse_sub2api_usage(&body).data.unwrap();
+        assert_eq!(data[0].plan_name.as_deref(), Some("account"));
+        assert_eq!(data[0].remaining, Some(12.35));
+        assert_eq!(data[1].plan_name.as_deref(), Some("key"));
+        assert_eq!(data[1].remaining, None);
+        assert_eq!(data[1].used, Some(2.5));
+        assert!(data[1]
+            .extra
+            .as_deref()
+            .unwrap()
+            .contains("\"unlimited\":true"));
+    }
+
+    #[test]
+    fn parses_sub2api_subscription_and_invalid() {
+        let body = json!({"mode": "unrestricted", "isValid": true, "planName": "Pro",
+            "remaining": 7.0, "unit": "USD"});
+        let data = parse_sub2api_usage(&body).data.unwrap();
+        assert_eq!(data.len(), 1);
+        assert_eq!(data[0].remaining, Some(7.0));
+        let r = parse_sub2api_usage(
+            &json!({"mode": "quota_limited", "isValid": false, "status": "disabled"}),
+        );
+        assert!(!r.success);
+        assert_eq!(r.data.unwrap()[0].is_valid, Some(false));
+        let r =
+            parse_sub2api_usage(&json!({"code": "INVALID_API_KEY", "message": "Invalid API key"}));
+        assert!(!r.success);
+    }
+
+    /// 联网测试：api14（sub2api）对无效 Key 返回 401，结果为“无效 Key”且不含 Key。
+    #[tokio::test]
+    #[ignore = "network"]
+    async fn live_invalid_key_api14() {
+        let fake = "sk-wendingai-invalid-test-key-0000000000";
+        let result = query("https://api14.wending.ai", fake)
+            .await
+            .expect("an invalid key is a normal (non-error) result");
+        assert!(!result.success);
+        let data = result.data.expect("invalid key returns a data row");
+        assert_eq!(data[0].is_valid, Some(false));
+        assert!(!format!("{:?}", data).contains(fake));
+        println!("api14 invalid-key result: error={:?}", result.error);
     }
 
     /// 联网测试：用一个明显无效的 Key 请求 api.wending.ai，确认错误处理正确、错误信息里不含 Key。
