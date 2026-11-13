@@ -1664,6 +1664,10 @@ pub fn run() {
             commands::get_xai_oauth_quota,
             commands::get_coding_plan_quota,
             commands::get_balance,
+            commands::wending_auth_probe,
+            commands::wending_auth_start,
+            commands::wending_auth_poll,
+            commands::wending_auth_cancel,
             // New MCP via config.json (SSOT)
             commands::get_mcp_config,
             commands::upsert_mcp_server_in_config,
