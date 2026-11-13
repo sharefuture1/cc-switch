@@ -1,4 +1,4 @@
-# WendingAI Switch 交接文档（P0 + P1）
+# WendingAI Switch 交接文档（P0 + P1 + P2）
 
 更新时间：2026-11-10 08:08 EST（America/New_York）
 仓库：https://github.com/sharefuture1/cc-switch，分支 `wendingai`（基于上游 tag `v4.0.28`）
@@ -123,6 +123,33 @@ macOS arm64 托管 runner 经常因容量排不上（首次运行等待 15 分�
 3. 等 “WendingAI Build” 跑完，到 Releases 页面检查草稿（全部安装包 + SHA256SUMS.txt），编辑说明后手动 Publish。
 4. 如需重跑同一 tag：在 Actions 里 Re-run；已存在的草稿会用 `--clobber` 覆盖同名文件。
 
+## 2d. P2：线路 14 + 一键授权登录 + 界面打磨（2026-11-13）
+
+### 线路
+- `src/brand/brand.ts` 的 `WENDING_LINES`：
+  - 主线路 `https://api.wending.ai`（new-api，支持一键登录，控制台 `/keys`、`/wallet`）
+  - 线路 14 `https://api14.wending.ai`（sub2api 网关，**独立账户**，主线路 Key 不通用；控制台 `/keys`、`/purchase`）
+- 额度：Rust `services/wending_quota.rs` 按域名分派。api14 走 `GET /v1/usage`（兼容 quota_limited / 钱包余额 / 订阅三种返回），其余走 `/api/usage/token/`。域名表在 `src-tauri/src/brand.rs` 的 `SUB2API_HOSTS`。
+- 引导弹窗先选线路；选线路 14 会提示“独立账户，需在 api14 控制台建 Key”。顶栏显示当前线路徽标，充值 / 创建 Key 链接随线路变化。
+
+### 一键授权登录（主线路）
+- 客户端 `src-tauri/src/services/wending_auth.rs` + 前端 `src/brand/auth.ts`：OAuth 2.0 授权码 + PKCE(S256)，公共客户端 `wd_wendingai_switch`，回调 `http://127.0.0.1:<随机端口>/wending/callback`（RFC 8252），校验 state，10 分钟超时，可取消。每台电脑有固定 device_id + 设备名，每台电脑拿到独立 Key。
+- 打开弹窗时先 `GET /api/oauth/clients/wd_wendingai_switch` 探测；后端没部署时按钮不出现，提示改用粘贴 Key（当前线上就是这个状态，见截图）。
+- 后端改动在 `sharefuture1/newapinew` 分支 `wending-desktop-auth`（未合并、**未部署生产**）：环回地址任意端口匹配、按设备授权、公共客户端信息接口、可指定 Client ID。部署步骤见该仓库 `docs/WENDING_OAUTH.md` 末节“Native desktop clients”。
+- 本地端到端（本机 new-api 实例 + Playwright 浏览器 + Rust 客户端）：登录 → 同意 → 拿到 Key 并通过 `/v1/models` 校验；第二台“设备”拿到不同 Key；重复授权复用同设备 Key；拒绝时客户端返回 access_denied。截图 `docs/screenshots/auth-*.png`。
+- 复跑：`WENDING_AUTH_E2E_BASE=http://127.0.0.1:3300 cargo test --lib wending_auth::tests::e2e_local -- --ignored --nocapture`（需配外部浏览器脚本，见测试注释）。
+
+### 界面
+- 新图标（深色圆角底 + 白色 W，带 macOS 安全边距），应用内 logo 同步。
+- 引导弹窗重做：线路卡片、一键登录主按钮（等待 / 取消状态）、粘贴 Key 备选、端点提示。
+- 纯净版隐藏不用的上游官方卡片；Gemini 页一次性提示 `gemini --skip-trust`。
+- Key 缺少某个工具可用模型时给出提示。
+- 截图：`docs/screenshots/onboarding-main-line.png`、`onboarding-line14.png`（真实应用，Xvfb）。
+
+### 验证（2026-11-13）
+- `pnpm typecheck` 通过；`pnpm vitest run` 296 个文件 / 3758 用例通过；`cargo test --lib wending` 14 通过（3 个联网 / E2E 用例默认忽略）；`pnpm tauri build --no-bundle` 通过。
+- 后端：`go test ./controller -run WendingOAuth` 通过。
+
 ## 3. 安全说明
 - Key 明文存储（与上游一致）：`~/.wendingai/cc-switch.db`（SQLite）以及各 CLI 自己的配置文件（`~/.claude/settings.json`、`~/.codex/auth.json`、`~/.gemini/.env`）。CLI 本身需要明文读取。界面只显示打码 Key（≤12 位整串隐藏）。
 - deeplink 只注册 `wendingai://`；解析器仍兼容 `ccswitch://` 格式（仅手动 / 测试）。
@@ -131,17 +158,18 @@ macOS arm64 托管 runner 经常因容量排不上（首次运行等待 15 分�
 ## 4. 仍是占位 / 待确认
 - 内置默认模型（claude-sonnet-4-5 / gpt-5.5 / gemini-2.5-pro）只在拿不到 `/v1/models` 时使用；测试 Key 无权访问这些模型，正常流程按 Key 实际可用模型选择。
 - 控制台链接已确认：前端把旧路由 `/console/token`、`/console/topup` 重定向到 `/keys`、`/wallet`，现已直接使用后者（SPA 路由，HTTP 200）。
-- 应用图标是“白底圆角 + 黑色 W”自动生成；`dmg-background.png` 未换。正式设计稿到位后替换 `assets/brand/` 并重跑 `pnpm tauri icon`。
+- 应用图标已改为“深色圆角 + 白色 W”（P2）；`dmg-background.png` 未换。正式设计稿到位后替换 `assets/brand/` 并重跑 `pnpm tauri icon`。
 - 发布流水线（release.yml）只做了改名，未验证；签名、公证、自有更新源都没配。
 - 模型别名（显示友好名称）未做，放 P3。
-- 引导弹窗背后的供应商列表仍会显示上游默认的官方卡片（Claude Official 等），可在 P2 隐藏。
+- 一键登录要等后端分支 `wending-desktop-auth` 部署并注册客户端 `wd_wendingai_switch` 后才会出现。
+- 线路 14 的 `/v1/usage` 只用无效 Key 验证过返回格式，还没有用真实 api14 Key 测试。
 - `deplink.html`、`flatpak/`、`docs/user-manual` 仍是上游内容。
 
 ## 5. 下一步（P2+）
 1. 拿到真实 Key 做端到端：三个 CLI 实际调用、额度刷新、更换 Key。
 2. 自有更新源（Tauri updater 公钥 + 自有 latest.json），再打开 `BRAND.updatesEnabled`。
 3. macOS / Windows 签名打包；release.yml 去掉上游专属步骤。
-4. 隐藏剩余上游入口（官方卡片、MCP / Skills 等高级页按需隐藏）、OAuth 一键授权（如 WendingAI 提供 OAuth / 设备码）。
+4. 部署后端一键授权（见 2d），用真实账户在三平台各跑一次；拿真实 api14 Key 验证额度和三个 CLI。
 5. P3：模型别名、额度告警、多 Key。
 
 ## 6. 关键决策
