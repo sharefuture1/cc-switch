@@ -109,6 +109,7 @@ import { FirstRunNoticeDialog } from "@/components/FirstRunNoticeDialog";
 import { BRAND, PURE_EDITION } from "@/brand/brand";
 import { WendingAccountBar } from "@/brand/components/WendingAccountBar";
 import { WendingOnboardingDialog } from "@/brand/components/WendingOnboardingDialog";
+import { WendingGeminiHint } from "@/brand/components/WendingGeminiHint";
 import { WhatsNewNotice } from "@/components/WhatsNewDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -1902,6 +1903,9 @@ function App() {
           className="relative isolate flex min-w-0 flex-1 flex-col overflow-hidden bg-app"
         >
           {PURE_EDITION && <WendingAccountBar />}
+          {PURE_EDITION &&
+            activeApp === "gemini" &&
+            currentView === "providers" && <WendingGeminiHint />}
           {showEnvBanner && envConflicts.length > 0 && (
             <EnvWarningBanner
               conflicts={envConflicts}

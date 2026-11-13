@@ -10,7 +10,7 @@ import type {
   UsageData,
   UsageResult,
 } from "@/types";
-import { BRAND, WENDING_DEFAULT_MODELS } from "./brand";
+import { BRAND, WENDING_DEFAULT_MODELS, lineForEndpoint } from "./brand";
 
 export const WENDING_APPS = ["claude", "codex", "gemini"] as const;
 export type WendingApp = (typeof WENDING_APPS)[number];
@@ -193,7 +193,7 @@ export function buildWendingProvider(
     baseUrl: baseUrl.trim().replace(/\/+$/, ""),
     apiKey: apiKey.trim(),
     models,
-    websiteUrl: BRAND.websiteUrl,
+    websiteUrl: lineForEndpoint(baseUrl).endpoint,
     icon: "wendingai",
     iconColor: BRAND.iconColor,
     notes: existing?.notes,
@@ -234,6 +234,27 @@ export class WendingSetupError extends Error {
 export interface SetupResult {
   quota: WendingQuota;
   failedApps: Array<{ app: WendingApp; error: string }>;
+  /** Key 的模型列表里没有对应模型族的应用（多见于按平台分组的线路 Key），可能无法使用 */
+  appsWithoutModels: WendingApp[];
+}
+
+const APP_MODEL_FAMILY: Record<WendingApp, RegExp> = {
+  claude: /claude|sonnet|opus|haiku/i,
+  codex: /^(gpt|o\d|codex)/i,
+  gemini: /gemini/i,
+};
+
+/**
+ * 按平台分组的 Key（例如线路 14 上只开通了 Claude 的 Key）只能用对应协议。
+ * 模型列表里一个已知模型族都没有时（例如主站的 laotalk-* 通用模型）不做判断。
+ */
+export function appsWithoutModels(modelIds: string[]): WendingApp[] {
+  const ids = modelIds.filter(Boolean);
+  const supported = WENDING_APPS.filter((app) =>
+    ids.some((id) => APP_MODEL_FAMILY[app].test(id)),
+  );
+  if (ids.length === 0 || supported.length === 0) return [];
+  return WENDING_APPS.filter((app) => !supported.includes(app));
 }
 
 /**
@@ -291,5 +312,5 @@ export async function setupWendingKey(
       });
     }
   }
-  return { quota, failedApps };
+  return { quota, failedApps, appsWithoutModels: appsWithoutModels(modelIds) };
 }

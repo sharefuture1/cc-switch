@@ -53,6 +53,7 @@ import { extractProviderBaseUrl } from "@/utils/providerConfigUtils";
 import { usePiCurrentState } from "@/lib/query/pi";
 import { isPiFamilyApp } from "@/config/appConfig";
 import { isHermesReadOnlyProvider } from "@/config/hermesProviderPresets";
+import { filterBrandProviders } from "@/brand/brand";
 import {
   DshAccountCard,
   accountName as dshAccountName,
@@ -129,8 +130,13 @@ export function ProviderList({
 }: ProviderListProps) {
   const { t } = useTranslation();
   const { checkProvider, isChecking } = useStreamCheck(appId);
+  // WendingAI 纯净版：隐藏未在使用的上游官方卡片
+  const visibleProviders = useMemo(
+    () => filterBrandProviders(providers, currentProviderId),
+    [providers, currentProviderId],
+  );
   const { sortedProviders, sensors, handleDragEnd } = useDragSort(
-    providers,
+    visibleProviders,
     appId,
   );
 
