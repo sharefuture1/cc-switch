@@ -152,6 +152,8 @@ for (const file of walk(path.join(ROOT, "src/i18n/locales"), [".json"])) {
   }
   let next = JSON.stringify(json, null, 2) + "\n";
   next = next.split(UPSTREAM_NAME).join(PRODUCT_NAME);
+  // 德语等语言的复合词写法（CC-Switch-Ordner）
+  next = next.split("CC-Switch").join(PRODUCT_NAME.replace(" ", "-"));
   // 用户可见的路径 / 文件名（与 src-tauri/src/brand.rs 保持一致）
   for (const [from, to] of LOCALE_PATH_REPLACEMENTS)
     next = next.split(from).join(to);

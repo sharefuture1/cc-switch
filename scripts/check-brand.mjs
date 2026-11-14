@@ -41,6 +41,8 @@ const ALLOW_CONTEXT = [
   // 这些条目永远不会渲染；放行它们可避免修改上游类型定义。
   /sudocode:\{name:"SudoCode"\}/,
   /"优云智算Coding Plan":"ucloud"/,
+  // Copilot 供应商键的内部前缀（剥掉旧版写入的 cc-switch- 前缀），不是界面文本
+  /replace\(\/\^cc-switch-\/,""\)/,
 ];
 
 /** 以 cc-switch 开头的内部存储键（localStorage 等）不是用户可见文本 */
