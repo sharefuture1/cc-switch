@@ -6,10 +6,12 @@
  *  - Hermes：`~/.hermes/config.yaml` 的 custom_providers + 顶层 `model:`（切换时由后端设置）
  *  - OpenClaw：`~/.openclaw/openclaw.json` 的 models.providers + agents.defaults.model / models
  *  - DeepSeek Harness：`$DSH_HOME/profiles/<web|desktop|…>/cordis.patch.yml` 的 provider
+ *    + `agent-default-model`（DSH 默认用 deepseek-official，不改就用不到新供应商）
  *
  * 协议：主线路（new-api）所有模型都走 OpenAI Chat Completions；线路 14（sub2api）按 Key
  * 的模型族选择 Anthropic Messages（claude-*）或 OpenAI Responses（gpt-* 等）。
  */
+import { invoke } from "@tauri-apps/api/core";
 import { openclawApi, providersApi } from "@/lib/api";
 import type { AppId } from "@/lib/api/types";
 import type { Provider } from "@/types";
@@ -178,16 +180,17 @@ async function configureApp(
   const existing = all[AGENT_PROVIDER_ID];
   const provider = buildProvider(app, plan, apiKey, websiteUrl, existing);
   if (existing) {
+    // 三个都是累加式应用：「写进客户端」就是 switch（addToLiveConfig 只给 Kimi / Copilot）
     await providersApi.update(provider, appId);
-    await providersApi.addToLiveConfig(AGENT_PROVIDER_ID, appId);
   } else {
     await providersApi.add(provider, appId, true);
   }
 
-  if (app === "hermes") {
-    // 切换会把顶层 model.default / model.provider 指向这张卡的第一个模型
+  if (existing || app === "hermes") {
+    // Hermes 切换还会把顶层 model.default / model.provider 指向这张卡的第一个模型
     await providersApi.switch(AGENT_PROVIDER_ID, appId);
-  } else if (app === "openclaw") {
+  }
+  if (app === "openclaw") {
     const ref = `${AGENT_PROVIDER_ID}/${plan.model}`;
     const catalog = (await openclawApi.getModelCatalog()) ?? {};
     await openclawApi.setModelCatalog({
@@ -195,6 +198,11 @@ async function configureApp(
       [ref]: { alias: BRAND.shortName },
     });
     await openclawApi.setDefaultModel({ primary: ref });
+  } else if (app === "dsh") {
+    await invoke("wending_dsh_set_default_model", {
+      provider: AGENT_PROVIDER_ID,
+      model: plan.model,
+    });
   }
 }
 

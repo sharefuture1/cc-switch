@@ -1428,6 +1428,30 @@ pub(crate) fn sync_mcp_and_commit<T>(
     sync_mcp_files_and_commit(&target_paths(), id, spec, commit)
 }
 
+/// WendingAI 一键配置：把 DSH 的默认模型（`agent-default-model` 插件配置）指向某个供应商的
+/// 模型，写入每个目标 profile。DSH 默认用 `deepseek-official`，不改的话新写的供应商不会被用到。
+pub(crate) fn set_default_model(provider: &str, model: &str) -> Result<(), AppError> {
+    set_default_model_in(&target_paths(), provider, model)
+}
+
+fn set_default_model_in(paths: &[PathBuf], provider: &str, model: &str) -> Result<(), AppError> {
+    let entry = serde_yaml::to_value(json!({
+        "id": "agent-default-model",
+        "config": { "provider": provider, "model": model },
+    }))
+    .map_err(|error| AppError::Config(error.to_string()))?;
+    edit_files_and_commit(
+        paths,
+        |texts| {
+            texts
+                .iter()
+                .map(|text| replace_entry(text, "agent-default-model", Some(entry.clone())))
+                .collect()
+        },
+        || Ok(()),
+    )
+}
+
 #[cfg(test)]
 fn sync_mcp_file_and_commit<T>(
     path: &Path,
@@ -2874,5 +2898,45 @@ mod tests {
         assert_eq!(document["refs"]["DEEPSEEK_API_KEY"], Yaml::from("sk-test"));
         assert!(!document["records"]["deepseek-account-platform/device"].is_null());
         assert_eq!(remove_account_grant().unwrap(), None);
+    }
+}
+
+#[cfg(test)]
+mod wending_default_model_tests {
+    use super::*;
+
+    #[test]
+    fn sets_and_replaces_agent_default_model() {
+        let dir = tempfile::tempdir().unwrap();
+        let existing = dir.path().join("web.yml");
+        fs::write(
+            &existing,
+            "# user comment\n- id: llm-pi-ai\n  config:\n    providers: {}\n- id: agent-default-model\n  config:\n    provider: deepseek-official\n    model: deepseek-flash\n",
+        )
+        .unwrap();
+        let empty = dir.path().join("headless.yml");
+        fs::write(&empty, "# header\n[]\n").unwrap();
+        let paths = vec![existing.clone(), empty.clone()];
+        set_default_model_in(&paths, "wendingai", "laotalk-quality").unwrap();
+        for path in &paths {
+            let text = fs::read_to_string(path).unwrap();
+            let parsed = entries(&text).unwrap();
+            let defaults: Vec<_> = parsed
+                .iter()
+                .filter(|e| e["id"].as_str() == Some("agent-default-model"))
+                .collect();
+            assert_eq!(defaults.len(), 1, "{text}");
+            assert_eq!(
+                defaults[0]["config"]["provider"].as_str(),
+                Some("wendingai")
+            );
+            assert_eq!(
+                defaults[0]["config"]["model"].as_str(),
+                Some("laotalk-quality")
+            );
+        }
+        let web = fs::read_to_string(&existing).unwrap();
+        assert!(web.contains("# user comment"));
+        assert!(web.contains("id: llm-pi-ai"));
     }
 }

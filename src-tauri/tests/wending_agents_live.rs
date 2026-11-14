@@ -9,8 +9,8 @@
 use std::sync::Arc;
 
 use cc_switch_lib::{
-    get_openclaw_model_catalog, set_openclaw_default_model, set_openclaw_model_catalog, AppState,
-    AppType, Database, Provider, ProviderService,
+    get_openclaw_model_catalog, set_openclaw_default_model, set_openclaw_model_catalog,
+    wending_dsh_set_default_model, AppState, AppType, Database, Provider, ProviderService,
 };
 use serde_json::Value;
 
@@ -73,6 +73,15 @@ fn replay_wending_agent_setup() {
             "setDefaultModel" => {
                 set_openclaw_default_model(serde_json::from_value(args[0].clone()).unwrap())
                     .expect("set default model");
+            }
+            "wending_dsh_set_default_model" => {
+                let a = &args[0];
+                wending_dsh_set_default_model(
+                    a["provider"].as_str().unwrap().to_string(),
+                    a["model"].as_str().unwrap().to_string(),
+                )
+                .expect("dsh default model");
+                println!("dsh default model set");
             }
             other => panic!("unexpected call {other}"),
         }

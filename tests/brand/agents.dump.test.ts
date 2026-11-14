@@ -8,6 +8,11 @@ import fs from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 
 const calls: Array<{ fn: string; args: unknown[] }> = [];
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: async (cmd: string, args: unknown) => {
+    calls.push({ fn: cmd, args: [args] });
+  },
+}));
 vi.mock("@/lib/api", () => {
   const rec =
     (fn: string, ret: unknown = true) =>
@@ -17,7 +22,12 @@ vi.mock("@/lib/api", () => {
     };
   return {
     providersApi: {
-      getAll: rec("getAll", {}),
+      getAll: rec(
+        "getAll",
+        process.env.WENDING_AGENTS_EXISTING
+          ? { wendingai: { id: "wendingai", createdAt: 1 } }
+          : {},
+      ),
       add: rec("add"),
       update: rec("update"),
       addToLiveConfig: rec("addToLiveConfig"),

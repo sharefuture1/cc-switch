@@ -1699,6 +1699,7 @@ pub fn run() {
             commands::wending_auth_start,
             commands::wending_auth_poll,
             commands::wending_auth_cancel,
+            commands::wending_dsh_set_default_model,
             // New MCP via config.json (SSOT)
             commands::get_mcp_config,
             commands::upsert_mcp_server_in_config,

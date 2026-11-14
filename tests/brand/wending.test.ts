@@ -14,6 +14,10 @@ const getCatalog = vi.fn();
 const setCatalog = vi.fn();
 const setDefaultModel = vi.fn();
 
+const invoke = vi.fn();
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: (...a: unknown[]) => invoke(...a),
+}));
 vi.mock("@/lib/api/subscription", () => ({
   subscriptionApi: { getBalance: (...a: unknown[]) => getBalance(...a) },
 }));
@@ -271,7 +275,7 @@ describe("setupWendingKey", () => {
       }),
       "hermes",
     );
-    expect(addToLive).toHaveBeenCalledWith("wendingai", "hermes");
+    expect(addToLive).not.toHaveBeenCalled(); // 累加式应用走 switch
     expect(switchProvider).toHaveBeenCalledWith("wendingai", "hermes");
     // OpenClaw：新增卡片 + 模型目录 + 默认模型
     expect(addProvider).toHaveBeenCalledWith(
