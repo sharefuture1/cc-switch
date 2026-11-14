@@ -534,8 +534,9 @@ pub struct AppSettings {
     /// many users do not want to chase every release).
     #[serde(default)]
     pub check_tool_updates_on_startup: bool,
-    /// 自动下载 WendingAI Switch 新版本，下好后问用户要不要安装（默认关）。设备级，不随云同步。
-    #[serde(default)]
+    /// 自动下载 WendingAI Switch 新版本，下好后问用户要不要安装。设备级，不随云同步。
+    /// WendingAI 版默认开（`brand::AUTO_UPDATE_DEFAULT`）。
+    #[serde(default = "default_auto_update_enabled")]
     pub auto_update_enabled: bool,
     /// 点托盘图标出原生菜单，不出托盘面板（macOS / Windows；Linux 只能出原生菜单，不看这一项）。
     /// 默认关：用托盘面板，想要原生菜单在设置里换回。
@@ -756,7 +757,7 @@ impl Default for AppSettings {
             show_profile_switcher: false,
             show_provider_search: true,
             check_tool_updates_on_startup: false,
-            auto_update_enabled: false,
+            auto_update_enabled: default_auto_update_enabled(),
             native_tray_menu: false,
             preserve_codex_official_auth_on_switch: false,
             codex_quota_protection: CodexQuotaProtection::default(),
@@ -2083,4 +2084,8 @@ mod tests {
         let entries = fs::read_dir(dir.path()).expect("read dir").count();
         assert_eq!(entries, 1, "no temp or backup files left behind");
     }
+}
+
+fn default_auto_update_enabled() -> bool {
+    crate::brand::AUTO_UPDATE_DEFAULT
 }

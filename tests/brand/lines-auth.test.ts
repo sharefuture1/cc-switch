@@ -81,7 +81,7 @@ describe("appsWithoutModels", () => {
   it("detects platform-specific keys", () => {
     expect(
       appsWithoutModels(["claude-sonnet-4-5", "claude-haiku-4-5"]),
-    ).toEqual(["codex", "gemini"]);
+    ).toEqual(["codex"]);
     expect(appsWithoutModels(["gpt-5.5", "gemini-2.5-pro"])).toEqual([
       "claude",
     ]);

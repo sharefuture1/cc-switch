@@ -9,8 +9,13 @@
 #   macOS 签名：APPLE_CERTIFICATE（.p12 的 base64）、APPLE_CERTIFICATE_PASSWORD、APPLE_SIGNING_IDENTITY
 #   macOS 公证：APPLE_ID、APPLE_PASSWORD（App 专用密码）、APPLE_TEAM_ID
 #   Windows 签名：WINDOWS_CERTIFICATE（.pfx 的 base64）、WINDOWS_CERTIFICATE_PASSWORD
-#   Tauri 更新签名：TAURI_SIGNING_PRIVATE_KEY、TAURI_SIGNING_PRIVATE_KEY_PASSWORD
-#     （应用内更新目前关闭，createUpdaterArtifacts=false；配好自有更新源后再启用）
+#   Tauri 更新签名（应用内更新必需）：TAURI_SIGNING_PRIVATE_KEY、TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+#     有密钥时生成 .sig 和 latest.json；没有时构建会关掉 createUpdaterArtifacts，只出安装包。
+#
+# 应用内更新：tauri.conf.json → plugins.updater.endpoints 指向
+#   https://github.com/sharefuture1/cc-switch/releases/latest/download/latest.json
+# GitHub 的 /releases/latest 只指向「已发布、非预发布」的 Release：草稿和预发布不会推送给用户。
+# 发版 = 推 tag wendingai-vX.Y.Z → CI 建草稿 → 检查后在网页上 Publish（不要勾 pre-release）。
 name: WendingAI Build
 
 on:
@@ -183,7 +188,6 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
-          # 应用内更新关闭（createUpdaterArtifacts=false），这里只是为以后启用预留
           if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
             {
               echo "TAURI_SIGNING_PRIVATE_KEY<<__EOF__"; echo "$TAURI_SIGNING_PRIVATE_KEY"; echo "__EOF__"
@@ -191,7 +195,9 @@ jobs:
             } >> "$GITHUB_ENV"
             echo "Tauri updater key present"
           else
-            echo "Tauri updater key not set (updater disabled)"
+            # 没有密钥时 tauri build 会因无法签名更新包而失败：关掉更新包，只出安装包
+            echo "Tauri updater key not set: building installers without updater artifacts"
+            echo "TAURI_NO_UPDATER_ARTIFACTS=1" >> "$GITHUB_ENV"
           fi
 
       # ── 构建 ────────────────────────────────────────────────────────
@@ -204,6 +210,9 @@ jobs:
           args=(--bundles "${{ matrix.bundles }}")
           if [ -n "${{ matrix.target }}" ]; then args+=(--target "${{ matrix.target }}"); fi
           if [ -n "${TAURI_EXTRA_CONFIG:-}" ]; then args+=(--config "$TAURI_EXTRA_CONFIG"); fi
+          if [ -n "${TAURI_NO_UPDATER_ARTIFACTS:-}" ]; then
+            args+=(--config '{"bundle":{"createUpdaterArtifacts":false}}')
+          fi
           pnpm tauri build "${args[@]}"
 
       - name: Collect installers
@@ -224,20 +233,30 @@ jobs:
           base="WendingAI-Switch-${version}"
           shopt -s nullglob
           case "${{ matrix.name }}" in
+            # 更新包的 .sig 跟着改名（latest.json 由 scripts/wending-latest-json.mjs 按文件名生成）
             windows-x64)
               for f in "$bundle"/nsis/*.exe; do cp "$f" "$out/${base}-Windows-x64-setup.exe"; done
+              for f in "$bundle"/nsis/*.exe.sig; do cp "$f" "$out/${base}-Windows-x64-setup.exe.sig"; done
               for f in "$bundle"/msi/*.msi; do cp "$f" "$out/${base}-Windows-x64.msi"; done
+              for f in "$bundle"/msi/*.msi.sig; do cp "$f" "$out/${base}-Windows-x64.msi.sig"; done
               ;;
             macos-universal)
               for f in "$bundle"/dmg/*.dmg; do cp "$f" "$out/${base}-macOS-universal.dmg"; done
-              for d in "$bundle"/macos/*.app; do
-                tar -czf "$out/${base}-macOS-universal.app.tar.gz" -C "$(dirname "$d")" "$(basename "$d")"
-              done
+              tarballs=("$bundle"/macos/*.app.tar.gz)
+              if [ ${#tarballs[@]} -gt 0 ]; then
+                cp "${tarballs[0]}" "$out/${base}-macOS-universal.app.tar.gz"
+                for f in "$bundle"/macos/*.app.tar.gz.sig; do cp "$f" "$out/${base}-macOS-universal.app.tar.gz.sig"; done
+              else
+                for d in "$bundle"/macos/*.app; do
+                  tar -czf "$out/${base}-macOS-universal.app.tar.gz" -C "$(dirname "$d")" "$(basename "$d")"
+                done
+              fi
               ;;
             linux-*)
               arch="${{ matrix.name }}"; arch="${arch#linux-}"
               for f in "$bundle"/deb/*.deb; do cp "$f" "$out/${base}-Linux-${arch}.deb"; done
               for f in "$bundle"/appimage/*.AppImage; do cp "$f" "$out/${base}-Linux-${arch}.AppImage"; done
+              for f in "$bundle"/appimage/*.AppImage.sig; do cp "$f" "$out/${base}-Linux-${arch}.AppImage.sig"; done
               for f in "$bundle"/rpm/*.rpm; do cp "$f" "$out/${base}-Linux-${arch}.rpm"; done
               ;;
           esac
@@ -253,21 +272,37 @@ jobs:
           retention-days: 30
 
   draft-release:
-    name: Draft pre-release (tag only)
+    name: Draft release + latest.json (tag only)
     if: github.ref_type == 'tag' && startsWith(github.ref_name, 'wendingai-v')
     needs: build
     runs-on: ubuntu-22.04
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v6
       - uses: actions/download-artifact@v8
         with:
           path: installers
           merge-multiple: true
+      - name: Updater manifest (latest.json)
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          # latest.json 的版本必须是应用自身的版本号（tauri.conf.json），不是 tag 的测试后缀
+          version="$(node -p "require('./src-tauri/tauri.conf.json').version")"
+          if ls installers/*.sig >/dev/null 2>&1; then
+            node scripts/wending-latest-json.mjs --dir installers --version "$version" \
+              --base-url "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}" \
+              --notes "WendingAI Switch ${version}"
+            cat installers/latest.json
+          else
+            echo "::warning::no updater signatures (TAURI_SIGNING_PRIVATE_KEY missing) — latest.json not generated"
+          fi
       - name: Checksums
         run: |
           cd installers
-          sha256sum * > SHA256SUMS.txt
+          sha256sum $(ls | grep -v -e '\.sig$' -e '^latest\.json$') > SHA256SUMS.txt
           ls -la
       - name: Create draft pre-release
         env:
@@ -278,6 +313,8 @@ jobs:
           version="${TAG#wendingai-v}"
           notes="WendingAI Switch ${version}（草稿，未发布）
 
+          应用内更新：发布本 Release（不勾选 pre-release）后，已安装的客户端会通过 latest.json 收到更新。
+
           安装包未做代码签名：
           - macOS：首次打开若提示无法验证开发者，请在「系统设置 → 隐私与安全性」中点「仍要打开」，或执行 xattr -dr com.apple.quarantine \"/Applications/WendingAI Switch.app\"
           - Windows：SmartScreen 提示时点「更多信息 → 仍要运行」
@@ -286,7 +323,10 @@ jobs:
           if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$TAG" installers/* --clobber -R "$GITHUB_REPOSITORY"
           else
+            # 带后缀的测试 tag（如 -test.1）建成预发布，正式 tag 只建草稿；两者都需要手动发布
+            prerelease=()
+            case "$version" in *-*) prerelease=(--prerelease) ;; esac
             gh release create "$TAG" installers/* -R "$GITHUB_REPOSITORY" \
-              --draft --prerelease --verify-tag \
+              --draft "${prerelease[@]}" --verify-tag \
               --title "WendingAI Switch ${version}" --notes "$notes"
           fi

@@ -36,12 +36,23 @@ export const BRAND = {
   dataDirName: ".wendingai",
   /** 图标颜色 */
   iconColor: "#111111",
-  /** v1 只开放这三个应用 */
-  enabledApps: ["claude", "codex", "gemini"] as readonly AppId[],
+  /** 开放的应用：一键配置覆盖这些应用（Gemini CLI 不再提供） */
+  enabledApps: [
+    "claude",
+    "codex",
+    "hermes",
+    "openclaw",
+    "dsh",
+  ] as readonly AppId[],
   /** 纯净版隐藏的全局页面：授权中心（第三方官方账号 OAuth 登录） */
   hiddenPages: ["auth"] as readonly string[],
-  /** 自动更新：在自有更新服务和签名密钥就绪前保持关闭 */
-  updatesEnabled: false,
+  /**
+   * 自动更新：启动时检查 + 关于页手动检查，后台下载、确认后安装重启。
+   * 更新源见 src-tauri/tauri.conf.json → plugins.updater（GitHub Releases 的 latest.json）。
+   */
+  updatesEnabled: true,
+  /** 发布页（更新失败时的手动下载入口） */
+  releasesUrl: "https://github.com/sharefuture1/cc-switch/releases",
   /** 新版本说明 / 新布局公告等上游弹窗 */
   upstreamNoticesEnabled: false,
   /** 上游开源项目署名（MIT 许可要求保留版权声明） */

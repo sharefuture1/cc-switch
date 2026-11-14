@@ -1,5 +1,6 @@
 /**
- * WendingAI 账户逻辑：粘贴 Key → 验证 → 写统一供应商 → 同步并切换 Claude / Codex / Gemini；额度查询。
+ * WendingAI 账户逻辑：粘贴 Key → 验证 → 写统一供应商 → 同步并切换 Claude Code / Codex，
+ * 再为 Hermes / OpenClaw / DeepSeek Harness 写入 WendingAI 供应商（见 `agents.ts`）；额度查询。
  */
 import { providersApi, universalProvidersApi } from "@/lib/api";
 import { subscriptionApi } from "@/lib/api/subscription";
@@ -11,9 +12,14 @@ import type {
   UsageResult,
 } from "@/types";
 import { BRAND, WENDING_DEFAULT_MODELS, lineForEndpoint } from "./brand";
+import { AGENT_APPS, configureAgentApps, type AgentApp } from "./agents";
 
-export const WENDING_APPS = ["claude", "codex", "gemini"] as const;
+/** 走统一供应商的应用（Gemini CLI 在 WendingAI 版中不再配置） */
+export const WENDING_APPS = ["claude", "codex"] as const;
 export type WendingApp = (typeof WENDING_APPS)[number];
+/** 一键配置覆盖的全部应用 */
+export const CONFIGURED_APPS = [...WENDING_APPS, ...AGENT_APPS] as const;
+export type ConfiguredApp = WendingApp | AgentApp;
 
 export function childProviderId(app: WendingApp): string {
   return `universal-${app}-${BRAND.universalProviderId}`;
@@ -189,7 +195,7 @@ export function buildWendingProvider(
     id: BRAND.universalProviderId,
     name: BRAND.shortName,
     providerType: BRAND.providerType,
-    apps: { claude: true, codex: true, gemini: true },
+    apps: { claude: true, codex: true, gemini: false },
     baseUrl: baseUrl.trim().replace(/\/+$/, ""),
     apiKey: apiKey.trim(),
     models,
@@ -233,7 +239,7 @@ export class WendingSetupError extends Error {
 
 export interface SetupResult {
   quota: WendingQuota;
-  failedApps: Array<{ app: WendingApp; error: string }>;
+  failedApps: Array<{ app: ConfiguredApp; error: string }>;
   /** Key 的模型列表里没有对应模型族的应用（多见于按平台分组的线路 Key），可能无法使用 */
   appsWithoutModels: WendingApp[];
 }
@@ -241,7 +247,6 @@ export interface SetupResult {
 const APP_MODEL_FAMILY: Record<WendingApp, RegExp> = {
   claude: /claude|sonnet|opus|haiku/i,
   codex: /^(gpt|o\d|codex)/i,
-  gemini: /gemini/i,
 };
 
 /**
@@ -258,7 +263,8 @@ export function appsWithoutModels(modelIds: string[]): WendingApp[] {
 }
 
 /**
- * 一步配置：验证 Key → 选模型 → 保存统一供应商 → 同步到三个 CLI → 切换为当前供应商。
+ * 一步配置：验证 Key → 选模型 → 保存统一供应商 → 同步到 Claude Code / Codex 并切换 →
+ * 写入 Hermes / OpenClaw / DeepSeek Harness 并设为默认模型。
  */
 export async function setupWendingKey(
   apiKey: string,
@@ -312,5 +318,15 @@ export async function setupWendingKey(
       });
     }
   }
+  const models = provider.models;
+  const agentFailures = await configureAgentApps(
+    key,
+    { ...lineForEndpoint(baseUrl), endpoint: baseUrl },
+    modelIds,
+    models.codex?.model ??
+      models.claude?.model ??
+      WENDING_DEFAULT_MODELS.codex.model,
+  );
+  failedApps.push(...agentFailures);
   return { quota, failedApps, appsWithoutModels: appsWithoutModels(modelIds) };
 }

@@ -117,7 +117,7 @@ function LinePicker({
 
 /**
  * 连接 WendingAI：选择线路 → 一键登录（主线路，服务端已开放时）或粘贴 API Key
- * → 验证 → 自动写好 Claude Code / Codex / Gemini CLI。
+ * → 验证 → 自动写好 Claude Code / Codex / Hermes / OpenClaw / DeepSeek Harness。
  * 尚未配置时自动弹出；也可通过 openWendingOnboarding() 手动打开（切换线路 / 更换 Key）。
  */
 export function WendingOnboardingDialog() {
@@ -169,7 +169,7 @@ export function WendingOnboardingDialog() {
     if (result.failedApps.length > 0) {
       toast.warning(
         t("wending.onboarding.partial", {
-          apps: result.failedApps.map((f) => f.app).join(", "),
+          apps: result.failedApps.map((f) => appName(f.app)).join("、"),
         }),
       );
     } else if (result.appsWithoutModels.length > 0) {
@@ -455,8 +455,12 @@ function appName(app: string): string {
       return "Claude Code";
     case "codex":
       return "Codex";
-    case "gemini":
-      return "Gemini CLI";
+    case "hermes":
+      return "Hermes";
+    case "openclaw":
+      return "OpenClaw";
+    case "dsh":
+      return "DeepSeek Harness";
     default:
       return app;
   }

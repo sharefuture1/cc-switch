@@ -41,7 +41,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "createUpdaterArtifacts": false,
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -59,7 +59,7 @@
     },
     "publisher": "WendingAI",
     "shortDescription": "WendingAI Switch",
-    "longDescription": "WendingAI Switch: configure Claude Code, Codex and Gemini CLI for WendingAI with one API key.",
+    "longDescription": "WendingAI Switch: configure Claude Code, Codex, Hermes, OpenClaw and DeepSeek Harness for WendingAI with one API key.",
     "copyright": "WendingAI. Based on CC Switch (MIT License, Copyright (c) 2025 Jason Young)."
   },
   "plugins": {
@@ -69,6 +69,12 @@
           "wendingai"
         ]
       }
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEM2NUM0REQ0ODFFMTI2NjUKUldSbEp1R0IxRTFjeHJwbU1TT1VDYzJmYWRtMkw5aHNEVnd4YWRKdlJXRlpmenVLelpiOUsrZUsK",
+      "endpoints": [
+        "https://github.com/sharefuture1/cc-switch/releases/latest/download/latest.json"
+      ]
     }
   }
 }

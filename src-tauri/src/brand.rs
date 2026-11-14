@@ -13,6 +13,12 @@ pub const DATA_DIR_NAME: &str = ".wendingai";
 pub const DEEPLINK_SCHEME: &str = "wendingai";
 /// 默认 API 地址
 pub const DEFAULT_ENDPOINT: &str = "https://api.wending.ai";
+
+/// 发布页（更新 / 手动下载）。应用内更新源见 tauri.conf.json → plugins.updater。
+/// 新装默认打开“自动下载更新”（下载完成后仍需用户确认才安装）。
+pub const AUTO_UPDATE_DEFAULT: bool = true;
+
+pub const RELEASES_URL: &str = "https://github.com/sharefuture1/cc-switch/releases";
 /// 统一供应商类型
 pub const PROVIDER_TYPE: &str = "wendingai";
 /// 对外请求的 User-Agent

@@ -20,7 +20,10 @@ describe("brand config", () => {
     expect(BRAND.defaultEndpoint).toBe("https://api.wending.ai");
     expect(BRAND.deeplinkScheme).toBe("wendingai");
     expect(BRAND.dataDirName).toBe(".wendingai");
-    expect(BRAND.updatesEnabled).toBe(false);
+    expect(BRAND.updatesEnabled).toBe(true);
+    expect(BRAND.releasesUrl).toBe(
+      "https://github.com/sharefuture1/cc-switch/releases",
+    );
     expect(JSON.stringify(BRAND)).not.toMatch(/有限公司|Co\.,? Ltd/i);
   });
 
@@ -29,8 +32,15 @@ describe("brand config", () => {
     expect(BRAND.upstream.license).toBe("MIT License");
   });
 
-  it("enables only Claude Code, Codex and Gemini CLI in the pure edition", () => {
-    expect([...BRAND.enabledApps]).toEqual(["claude", "codex", "gemini"]);
+  it("enables Claude Code, Codex, Hermes, OpenClaw and DSH (no Gemini CLI)", () => {
+    expect([...BRAND.enabledApps]).toEqual([
+      "claude",
+      "codex",
+      "hermes",
+      "openclaw",
+      "dsh",
+    ]);
+    expect([...BRAND.enabledApps]).not.toContain("gemini");
     expect([...BRAND.hiddenPages]).toContain("auth");
     // 单元测试跑在上游模式（__WENDING_PURE__ = false）：开关全部放行，上游用例不受影响
     expect(PURE_EDITION).toBe(false);

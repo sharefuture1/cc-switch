@@ -7,7 +7,7 @@ const zh = {
     onboarding: {
       title: "连接 WendingAI",
       subtitle:
-        "选择线路，用 WendingAI 账号一键登录或粘贴 API Key，自动为 Claude Code、Codex、Gemini CLI 完成配置。",
+        "选择线路，用 WendingAI 账号一键登录或粘贴 API Key，自动为 Claude Code、Codex、Hermes、OpenClaw、DeepSeek Harness 完成配置。",
       keyLabel: "API Key",
       keyPlaceholder: "sk-...",
       getKey: "去控制台创建 Key",
@@ -16,7 +16,7 @@ const zh = {
       verifying: "正在验证…",
       configuring: "正在写入配置…",
       success:
-        "配置完成：Claude Code / Codex / Gemini CLI 已切换到 WendingAI {{line}}",
+        "配置完成：Claude Code、Codex、Hermes、OpenClaw、DeepSeek Harness 已切换到 WendingAI {{line}}",
       partial: "部分应用配置失败：{{apps}}",
       modelsMissing:
         "配置完成，但这个 Key 的可用模型里没有 {{apps}} 对应的模型，这些工具可能无法使用。请在控制台给 Key 选择包含对应模型的分组。",
@@ -81,11 +81,23 @@ const zh = {
         generic: "授权没有完成，请重试或使用 API Key 连接",
       },
     },
-    gemini: {
-      trustTitle: "Gemini CLI 需要信任当前目录才会读取配置",
-      trustDesc:
-        "首次在某个项目目录运行 gemini 时，请在提示中选择信任该目录；脚本或非交互模式可使用",
-      dismiss: "不再提示",
+    update: {
+      title: "软件更新",
+      check: "检查更新",
+      checking: "正在检查…",
+      upToDate: "已是最新版本",
+      noRelease: "暂时没有可用的更新",
+      failed: "检查更新失败",
+      available: "发现新版本 v{{version}}",
+      install: "更新到 v{{version}}",
+      installing: "正在更新…",
+      installFailed: "更新失败，可前往发布页手动下载",
+      openReleases: "发布页",
+      auto: "自动下载更新",
+      autoHelp:
+        "开启后在后台下载新版本，下载完成后提示你安装并重启；关闭后仍会在启动时检查并提醒。",
+      autoUnsupported:
+        "当前安装方式不支持自动安装（如 Linux 的 deb 包、便携版），请到发布页下载新版本。",
     },
     about: {
       basedOn:
@@ -100,7 +112,7 @@ const en = {
     onboarding: {
       title: "Connect WendingAI",
       subtitle:
-        "Pick a line, then sign in with your WendingAI account or paste an API key. Claude Code, Codex and Gemini CLI are configured automatically.",
+        "Pick a line, then sign in with your WendingAI account or paste an API key. Claude Code, Codex, Hermes, OpenClaw and DeepSeek Harness are configured automatically.",
       keyLabel: "API key",
       keyPlaceholder: "sk-...",
       getKey: "Create a key in the console",
@@ -109,7 +121,7 @@ const en = {
       verifying: "Verifying…",
       configuring: "Writing configuration…",
       success:
-        "Done: Claude Code / Codex / Gemini CLI now use WendingAI {{line}}",
+        "Done: Claude Code, Codex, Hermes, OpenClaw and DeepSeek Harness now use WendingAI {{line}}",
       partial: "Some apps could not be configured: {{apps}}",
       modelsMissing:
         "Configured, but this key has no models for {{apps}}, so those tools may not work. Pick a group with matching models for the key in the console.",
@@ -180,11 +192,24 @@ const en = {
         generic: "Authorization did not complete. Retry or use an API key.",
       },
     },
-    gemini: {
-      trustTitle: "Gemini CLI only reads its config in trusted folders",
-      trustDesc:
-        "The first time you run gemini in a project folder, choose to trust it; for scripts or non-interactive use run",
-      dismiss: "Don't show again",
+    update: {
+      title: "Software update",
+      check: "Check for updates",
+      checking: "Checking…",
+      upToDate: "You're on the latest version",
+      noRelease: "No update is available right now",
+      failed: "Update check failed",
+      available: "Version v{{version}} is available",
+      install: "Update to v{{version}}",
+      installing: "Updating…",
+      installFailed:
+        "Update failed. You can download it from the releases page.",
+      openReleases: "Releases",
+      auto: "Download updates automatically",
+      autoHelp:
+        "Downloads new versions in the background and asks before installing and restarting. When off, the app still checks at startup and lets you know.",
+      autoUnsupported:
+        "This install can't update itself (for example a Linux .deb or the portable build). Download the new version from the releases page.",
     },
     about: {
       basedOn:

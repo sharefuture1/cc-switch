@@ -6,6 +6,13 @@ const upsert = vi.fn();
 const sync = vi.fn();
 const get = vi.fn();
 const switchProvider = vi.fn();
+const getAll = vi.fn();
+const addProvider = vi.fn();
+const updateProvider = vi.fn();
+const addToLive = vi.fn();
+const getCatalog = vi.fn();
+const setCatalog = vi.fn();
+const setDefaultModel = vi.fn();
 
 vi.mock("@/lib/api/subscription", () => ({
   subscriptionApi: { getBalance: (...a: unknown[]) => getBalance(...a) },
@@ -19,7 +26,18 @@ vi.mock("@/lib/api", () => ({
     sync: (...a: unknown[]) => sync(...a),
     get: (...a: unknown[]) => get(...a),
   },
-  providersApi: { switch: (...a: unknown[]) => switchProvider(...a) },
+  providersApi: {
+    switch: (...a: unknown[]) => switchProvider(...a),
+    getAll: (...a: unknown[]) => getAll(...a),
+    add: (...a: unknown[]) => addProvider(...a),
+    update: (...a: unknown[]) => updateProvider(...a),
+    addToLiveConfig: (...a: unknown[]) => addToLive(...a),
+  },
+  openclawApi: {
+    getModelCatalog: (...a: unknown[]) => getCatalog(...a),
+    setModelCatalog: (...a: unknown[]) => setCatalog(...a),
+    setDefaultModel: (...a: unknown[]) => setDefaultModel(...a),
+  },
 }));
 
 import {
@@ -166,7 +184,7 @@ describe("pickModels with WendingAI-only models", () => {
 });
 
 describe("buildWendingProvider", () => {
-  it("builds a universal provider for the three CLIs", () => {
+  it("builds a universal provider for Claude Code and Codex (no Gemini)", () => {
     const p = buildWendingProvider(
       ` ${FAKE_KEY} `,
       "https://api.wending.ai/",
@@ -175,7 +193,7 @@ describe("buildWendingProvider", () => {
     expect(p.id).toBe("wendingai");
     expect(p.apiKey).toBe(FAKE_KEY);
     expect(p.baseUrl).toBe("https://api.wending.ai");
-    expect(p.apps).toEqual({ claude: true, codex: true, gemini: true });
+    expect(p.apps).toEqual({ claude: true, codex: true, gemini: false });
     expect(p.meta?.usage_script?.templateType).toBe("balance");
   });
 });
@@ -203,14 +221,19 @@ describe("setupWendingKey", () => {
     expect(switchProvider).not.toHaveBeenCalled();
   });
 
-  it("configures and switches all three CLIs", async () => {
+  it("configures Claude Code, Codex, Hermes, OpenClaw and DSH", async () => {
     getBalance.mockResolvedValueOnce(okBalance);
     fetchModels.mockResolvedValueOnce([{ id: "gpt-5.5" }]);
     get.mockRejectedValueOnce(new Error("not found"));
-    switchProvider.mockImplementation(async (id: string, app: string) => {
-      if (app === "gemini") throw new Error("gemini not installed");
-      return id;
+    switchProvider.mockImplementation(async (id: string) => id);
+    getAll.mockImplementation(async (app: string) =>
+      app === "hermes" ? { wendingai: { id: "wendingai", createdAt: 1 } } : {},
+    );
+    addProvider.mockImplementation(async (_p: unknown, app: string) => {
+      if (app === "dsh") throw new Error("dsh not installed");
+      return true;
     });
+    getCatalog.mockResolvedValueOnce({ "other/model": {} });
     const stages: string[] = [];
     const res = await setupWendingKey(FAKE_KEY, undefined, (s) =>
       stages.push(s),
@@ -230,8 +253,46 @@ describe("setupWendingKey", () => {
       childProviderId("codex"),
       "codex",
     );
+    expect(switchProvider).not.toHaveBeenCalledWith(
+      expect.anything(),
+      "gemini",
+    );
+    // Hermes 已有 WendingAI 卡：更新 + 写回 live + 切换（设置 model.default）
+    expect(updateProvider).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "wendingai",
+        createdAt: 1,
+        settingsConfig: expect.objectContaining({
+          base_url: "https://api.wending.ai/v1",
+          api_key: FAKE_KEY,
+          api_mode: "chat_completions",
+          models: [{ id: "gpt-5.5", name: "gpt-5.5" }],
+        }),
+      }),
+      "hermes",
+    );
+    expect(addToLive).toHaveBeenCalledWith("wendingai", "hermes");
+    expect(switchProvider).toHaveBeenCalledWith("wendingai", "hermes");
+    // OpenClaw：新增卡片 + 模型目录 + 默认模型
+    expect(addProvider).toHaveBeenCalledWith(
+      expect.objectContaining({
+        settingsConfig: expect.objectContaining({
+          baseUrl: "https://api.wending.ai/v1",
+          api: "openai-completions",
+        }),
+      }),
+      "openclaw",
+      true,
+    );
+    expect(setCatalog).toHaveBeenCalledWith({
+      "other/model": {},
+      "wendingai/gpt-5.5": { alias: "WendingAI" },
+    });
+    expect(setDefaultModel).toHaveBeenCalledWith({
+      primary: "wendingai/gpt-5.5",
+    });
     expect(res.failedApps).toEqual([
-      { app: "gemini", error: "gemini not installed" },
+      { app: "dsh", error: "dsh not installed" },
     ]);
   });
 });

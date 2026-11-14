@@ -6,13 +6,13 @@ import { Button } from "@/components/ui/button";
 import { settingsApi } from "@/lib/api";
 import { BRAND } from "../brand";
 import logo from "@/assets/icons/logo.svg";
+import {
+  WendingUpdatePanel,
+  type WendingUpdatePanelProps,
+} from "./WendingUpdatePanel";
 
 /** 纯净版“关于”页：只显示 WendingAI 品牌，保留上游 MIT 许可要求的版权声明 */
-export function WendingAboutSection(_props: {
-  isPortable?: boolean;
-  autoUpdateEnabled?: boolean;
-  onAutoSave?: (updates: { autoUpdateEnabled: boolean }) => Promise<boolean>;
-}) {
+export function WendingAboutSection(props: WendingUpdatePanelProps) {
   const { t } = useTranslation();
   const [version, setVersion] = useState<string | null>(null);
   useEffect(() => {
@@ -37,6 +37,7 @@ export function WendingAboutSection(_props: {
           </div>
         </div>
       </div>
+      {BRAND.updatesEnabled && <WendingUpdatePanel {...props} />}
       <div className="flex flex-wrap items-center gap-2 px-5 py-4">
         <Button
           type="button"

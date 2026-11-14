@@ -81,7 +81,7 @@ pub async fn check_for_updates(handle: AppHandle) -> Result<bool, String> {
     handle
         .opener()
         .open_url(
-            "https://github.com/farion1231/cc-switch/releases/latest",
+            format!("{}/latest", crate::brand::RELEASES_URL),
             None::<String>,
         )
         .map_err(|e| format!("打开更新页面失败: {e}"))?;
@@ -91,6 +91,7 @@ pub async fn check_for_updates(handle: AppHandle) -> Result<bool, String> {
 
 /// 便携版新版本压缩包的下载地址，命名与 release.yml 的「Prepare Windows Assets」一致：
 /// `CC-Switch-v<版本>-Windows[-arm64]-Portable.zip`。版本号不像版本号时返回 None。
+#[cfg_attr(not(test), allow(dead_code))]
 fn portable_zip_url(version: &str, arm64: bool) -> Option<String> {
     let version = version.trim().trim_start_matches('v');
     let looks_like_version = version.starts_with(|c: char| c.is_ascii_digit())
@@ -113,8 +114,9 @@ pub async fn open_portable_update_download(
     handle: AppHandle,
     version: String,
 ) -> Result<bool, String> {
-    let url = portable_zip_url(&version, cfg!(target_arch = "aarch64"))
-        .unwrap_or_else(|| "https://github.com/farion1231/cc-switch/releases/latest".to_string());
+    // WendingAI 不发布便携版压缩包：统一打开自己的发布页（上游的压缩包地址只保留给单测）。
+    let _ = version;
+    let url = format!("{}/latest", crate::brand::RELEASES_URL);
     handle
         .opener()
         .open_url(url, None::<String>)

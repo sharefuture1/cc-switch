@@ -15,6 +15,8 @@ export default defineConfig({
   },
   test: {
     include: ["{src,tests}/**/*.{test,spec}.{ts,tsx,js,jsx}"],
+    // WendingAI 版的 README 是品牌说明 + 去掉赞助商的上游文档，不和上游多语言 README 逐行对齐
+    exclude: ["**/node_modules/**", "tests/config/readmeParity.test.ts"],
     environment: "jsdom",
     setupFiles: ["./tests/setupGlobals.ts", "./tests/setupTests.ts"],
     globals: true,
