@@ -1,4 +1,4 @@
-# WendingAI Switch 交接文档（P0 + P1 + P2）
+# WendingAI Switch 交接文档（P0 + P1 + P2 + v4.0.32）
 
 更新时间：2026-11-10 08:08 EST（America/New_York）
 仓库：https://github.com/sharefuture1/cc-switch，分支 `wendingai`（基于上游 tag `v4.0.28`）
@@ -79,7 +79,7 @@
 
 触发：
 - push 到 `wendingai` 分支：自动构建，安装包作为 workflow artifacts 上传（保留 30 天）
-- push tag `wendingai-v*`：同上，另外在 sharefuture1/cc-switch 创建 **草稿 + 预发布** Release，附全部安装包和 `SHA256SUMS.txt`（不会自动发布，需要人工点 Publish）
+- push tag `wendingai-v*`：同上，另外在 sharefuture1/cc-switch 创建 **草稿** Release，附全部安装包、更新签名 `.sig`、`latest.json` 和 `SHA256SUMS.txt`（不会自动发布，需要人工点 Publish）。tag 带 `-`（如 `wendingai-v4.0.32-test.1`）时另标为预发布
 - Actions 页面手动 `Run workflow`
 
 流程：`checks`（typecheck、format:check、全部前端单测、build:renderer、`scripts/check-brand.sh`）通过后，并行打包：
@@ -109,7 +109,7 @@ macOS arm64 托管 runner 经常因容量排不上（首次运行等待 15 分�
 | `APPLE_ID` / `APPLE_PASSWORD` / `APPLE_TEAM_ID` | 公证：Apple ID、App 专用密码、Team ID（三者齐全才公证） |
 | `WINDOWS_CERTIFICATE` | Authenticode 代码签名证书 .pfx 的 base64 |
 | `WINDOWS_CERTIFICATE_PASSWORD` | .pfx 密码 |
-| `TAURI_SIGNING_PRIVATE_KEY` / `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Tauri 更新包签名（应用内更新仍关闭，`createUpdaterArtifacts=false`；搭好自有更新源后再开） |
+| `TAURI_SIGNING_PRIVATE_KEY` / `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Tauri 更新包签名（**已设置**，2026-11-14）。应用内更新必需：有它才生成 `.sig` 和 `latest.json`；缺少时 CI 自动关掉 `createUpdaterArtifacts`，只出安装包 |
 
 未签名时用户会看到：
 - macOS：安装包是 ad-hoc 签名、未公证。首次打开提示“无法验证开发者 / 无法打开”。处理：在“系统设置 → 隐私与安全性”底部点“仍要打开”；或执行 `xattr -dr com.apple.quarantine "/Applications/WendingAI Switch.app"`。
@@ -119,9 +119,10 @@ macOS arm64 托管 runner 经常因容量排不上（首次运行等待 15 分�
 ### 发版步骤
 
 1. 在 `wendingai` 分支更新版本号（`package.json`、`src-tauri/Cargo.toml`、`src-tauri/tauri.conf.json`），提交并推送。
-2. 打 tag 并推送：`git tag wendingai-v4.0.29 && git push origin wendingai-v4.0.29`。
-3. 等 “WendingAI Build” 跑完，到 Releases 页面检查草稿（全部安装包 + SHA256SUMS.txt），编辑说明后手动 Publish。
-4. 如需重跑同一 tag：在 Actions 里 Re-run；已存在的草稿会用 `--clobber` 覆盖同名文件。
+2. 打 tag 并推送：`git tag wendingai-v4.0.33 && git push origin wendingai-v4.0.33`。
+3. 等 “WendingAI Build” 跑完，到 Releases 页面检查草稿（安装包 + `.sig` + `latest.json` + SHA256SUMS.txt），编辑说明后 **Publish，不要勾 pre-release**。
+4. 发布后，所有已安装用户的应用会从 `releases/latest/download/latest.json` 发现新版本（见 2e）。
+5. 如需重跑同一 tag：在 Actions 里 Re-run；已存在的草稿会用 `--clobber` 覆盖同名文件。
 
 ## 2d. P2：线路 14 + 一键授权登录 + 界面打磨（2026-11-13）
 
@@ -150,24 +151,84 @@ macOS arm64 托管 runner 经常因容量排不上（首次运行等待 15 分�
 - `pnpm typecheck` 通过；`pnpm vitest run` 296 个文件 / 3758 用例通过；`cargo test --lib wending` 14 通过（3 个联网 / E2E 用例默认忽略）；`pnpm tauri build --no-bundle` 通过。
 - 后端：`go test ./controller -run WendingOAuth` 通过。
 
+## 2e. v4.0.32：合并上游 + Hermes / OpenClaw / DeepSeek Harness 一键配置 + 应用内更新（2026-11-14）
+
+分支 `wendingai-v4032`，确认通过后快进到 `wendingai`。
+
+### 合并上游 v4.0.32
+- 27 处冲突，保留品牌层、线路 14、一键授权、界面改动；之后重跑 `node scripts/brand-apply.mjs`（每次合并上游都要跑）。
+- 上游把应用列表挪到 `src/config/appSpecs.ts`（`APP_SPECS`）；品牌过滤改在这里：`APP_IDS = …filter(isBrandAppEnabled)`。
+- 上游预设文件统一包成 `upstreamXProviderPresets()`，纯净版用品牌预设或空数组，便于下次合并。
+- `readmeParity` 单测排除（README 是品牌版）；德语界面 “CC-Switch” 残留已由 `brand-apply.mjs` 处理。
+
+### 一键配置五个工具
+- 引导弹窗填 Key（或一键登录）后同时配置 Claude Code、Codex、Hermes、OpenClaw、DeepSeek Harness。模型取自 `/v1/models`（跳过视觉 / 嵌入模型，最多 20 个，优先 quality / pro / sonnet 等）。
+- 代码：`src/brand/agents.ts`（`planAgentConfig`、`configureAgentApps`），在 `setupWendingKey` 里调用；单个工具失败不影响其他，并在弹窗里按名称提示。
+- 协议：主线路（new-api）`openai-completions`，地址 `<base>/v1`；线路 14 Claude Key 用 `anthropic-messages`（`<base>`），GPT Key 用 `openai-responses`（`<base>/v1`）。
+- 都用上游写配置的接口，供应商 ID 均为 `wendingai`：
+  - Hermes：`~/.hermes/config.yaml` 的 `custom_providers` + 切换（`model.default` / `model.provider`）。
+  - OpenClaw：`~/.openclaw/openclaw.json` 的 `models.providers.wendingai` + 模型目录 + `agents.defaults.model.primary = wendingai/<模型>`。
+  - DeepSeek Harness：`~/.dsh/profiles/<web|desktop|headless…>/cordis.patch.yml` 的 `llm-pi-ai` 供应商，Key 在 `~/.dsh/.credentials.yaml`；另外新增 `dsh_config::set_default_model`（命令 `wending_dsh_set_default_model`）写 `agent-default-model`，否则 DSH 一直用 `deepseek-official`。
+- 已有卡片时重新配置走 update + switch（这三个都是累加式应用；`addToLiveConfig` 只给 Kimi / Copilot，之前会报错，已修）。
+- 安装：沿用上游一键安装（OpenClaw `npm i -g openclaw`，DSH `@deepseek-ai/dsh`，Hermes 官方 `install.sh`），文案已品牌化。
+
+### Gemini CLI 已隐藏
+- `BRAND.enabledApps = ["claude","codex","hermes","openclaw","dsh"]`：侧栏、Apps 页、托盘、一键配置都不再出现 Gemini；通用供应商 `apps.gemini=false`；删除 Gemini 提示组件。上游 Gemini 代码保留未删（减少分歧）。
+
+### 验证（2026-11-14，本机 Linux x86_64）
+- `pnpm typecheck` 通过；`pnpm vitest run` 318 个文件 / 4027 用例通过；`cargo test --lib` 4845 通过（17 个默认忽略）；`scripts/check-brand.sh` OK（56 个文件）；`pnpm tauri build` 出 deb + AppImage（已签名）。
+- 工具实测（**没有真实 WendingAI Key**——环境里没有 `WENDINGAI_TEST_KEY`——所以用本地模拟网关 `/tmp/wending-e2e/mock_server.py`，校验 Key、模型和路径）：
+  1. vitest 记录 `configureAgentApps` 的调用（`WENDING_AGENTS_DUMP=… pnpm vitest run tests/brand/agents.dump.test.ts`，加 `WENDING_AGENTS_EXISTING=1` 测重新配置）；
+  2. Rust 测试用真实写配置代码回放（`WENDING_AGENTS_HOME=… WENDING_AGENTS_CALLS=… cargo test --test wending_agents_live -- --ignored`）；
+  3. 检查生成的配置文件，再用真实 CLI 调用：
+
+  | 工具 | 版本 | 命令 | 结果 |
+  | --- | --- | --- | --- |
+  | Hermes | install.sh 最新 | `hermes -z "reply with OK"` | ✅ 返回模拟回复；`POST /v1/chat/completions`，Key、模型正确 |
+  | OpenClaw | 2026.11.3 | `openclaw agent --local --agent main -m …` | ✅ 同上 |
+  | DeepSeek Harness | 0.2.2-rc.1 | `dsh headless "reply with OK"` | ✅ 同上（需新增的默认模型设置） |
+  | Claude Code / Codex | — | 未改动 | 2b 节用真实 Key 验证过 |
+
+  线路 14 的 anthropic / responses 两种写法只有单测，未跑 CLI。
+- 已知小问题：Hermes 安装器默认写的 `model.base_url: https://openrouter.ai/api/v1` 会保留（上游切换不改它）；实测调用走 `custom_providers.wendingai`，不受影响。
+
+### 应用内更新
+- 用上游 Tauri updater（`src-tauri/src/app_update.rs` + 前端 `UpdateContext` / `AutoUpdatePrompt`），打开品牌开关 `BRAND.updatesEnabled`，关于页换成 `WendingUpdatePanel`：检查更新、一键更新、Releases 链接、“自动下载更新”开关（纯净版默认开）。
+- 行为：启动时检查；开着自动下载时，启动 60 秒后后台下载、之后每 6 小时检查一次（仅正式构建），下载完弹窗问“安装并重启 / 稍后”；关着时只提示。没有 Release / 404 时提示“暂时没有可用更新”，不报错。签名不对时拒绝安装，提示去 Releases 页下载。
+- 平台：Windows（NSIS / MSI）、macOS（.app.tar.gz）可自更新；**Linux 只有 AppImage 能自更新**（deb / rpm 用户在关于页点 Releases 手动下载）。
+- 更新源：`https://github.com/sharefuture1/cc-switch/releases/latest/download/latest.json`。GitHub 的 `/releases/latest` 只指向已发布、非预发布的 Release，草稿和预发布不会推给用户。
+- 签名密钥：专用 minisign 密钥（Key ID `C65C4DD481E12665`），公钥在 `tauri.conf.json`；私钥和密码只在构建机 `~/.wendingai-secrets/`（目录 700、文件 600，未提交），并已设为仓库 Secret。**私钥丢失将无法给已安装用户推送更新**，请另行离线备份。
+- `latest.json` 由 `scripts/wending-latest-json.mjs` 生成（CI 和本地共用）：`node scripts/wending-latest-json.mjs --dir <安装包目录> --version X.Y.Z --base-url https://github.com/sharefuture1/cc-switch/releases/download/wendingai-vX.Y.Z --out latest.json`。
+- 本地实测（Xvfb，AppImage，用本机 HTTP 服务模拟更新源；测试包用 `--config` 把地址改为 `http://127.0.0.1:18090/latest.json`）：
+  - 没有 latest.json（404）：启动检查和手动检查都提示“暂时没有可用更新”，后台任务只记 warn。截图 `docs/screenshots/v4032-no-release.png`。
+  - 放上已签名的假 4.0.33：关于页显示“更新到 v4.0.33” → 点击 → 下载、验签、替换 AppImage（文件 SHA 与 4.0.33 一致）→ 自动重启，侧栏显示 v4.0.33。截图 `v4032-update-available.png`。
+  - 自动下载：不操作，60 秒后后台下载，弹出“v4.0.33 已下载，安装并重启？”；确认后用已下载的包安装（不重复下载）并重启。截图 `v4032-auto-download-prompt.png`。
+  - 签名不匹配：拒绝安装，提示 “The signature verification failed” 并给出 Releases 按钮，原文件不变。截图 `v4032-bad-signature-rejected.png`。
+  - Windows / macOS 的自更新没有实测。
+
+### CI
+- `wendingai-build.yml`：有更新密钥时生成 `.sig`，收集并重命名；Release 任务生成 `latest.json`（平台键 `windows-x86_64[-nsis|-msi]`、`darwin-{x86_64,aarch64}[-app]`、`linux-{x86_64,aarch64}[-appimage]`）一起上传；校验和不含 `.sig` / `latest.json`。
+- **GitHub Actions 仍被禁用**（触发返回 HTTP 422，多半是账户计费 / 限额问题），工作流只做了 YAML 校验，没在 GitHub 上跑过。恢复后推 tag 即可。
+
 ## 3. 安全说明
 - Key 明文存储（与上游一致）：`~/.wendingai/cc-switch.db`（SQLite）以及各 CLI 自己的配置文件（`~/.claude/settings.json`、`~/.codex/auth.json`、`~/.gemini/.env`）。CLI 本身需要明文读取。界面只显示打码 Key（≤12 位整串隐藏）。
 - deeplink 只注册 `wendingai://`；解析器仍兼容 `ccswitch://` 格式（仅手动 / 测试）。
 - 上游远端 push 地址已设为 `DISABLED`，防止误推。
+- 更新签名私钥只在 `~/.wendingai-secrets/`（600）和 GitHub Secrets 中，从未打印或提交。
 
 ## 4. 仍是占位 / 待确认
 - 内置默认模型（claude-sonnet-4-5 / gpt-5.5 / gemini-2.5-pro）只在拿不到 `/v1/models` 时使用；测试 Key 无权访问这些模型，正常流程按 Key 实际可用模型选择。
 - 控制台链接已确认：前端把旧路由 `/console/token`、`/console/topup` 重定向到 `/keys`、`/wallet`，现已直接使用后者（SPA 路由，HTTP 200）。
 - 应用图标已改为“深色圆角 + 白色 W”（P2）；`dmg-background.png` 未换。正式设计稿到位后替换 `assets/brand/` 并重跑 `pnpm tauri icon`。
-- 发布流水线（release.yml）只做了改名，未验证；签名、公证、自有更新源都没配。
+- 发布流水线（release.yml）只做了改名，未验证；macOS / Windows 代码签名、公证没配（应用内更新已用 Tauri 签名配好，见 2e）。
 - 模型别名（显示友好名称）未做，放 P3。
 - 一键登录要等后端分支 `wending-desktop-auth` 部署并注册客户端 `wd_wendingai_switch` 后才会出现。
 - 线路 14 的 `/v1/usage` 只用无效 Key 验证过返回格式，还没有用真实 api14 Key 测试。
 - `deplink.html`、`flatpak/`、`docs/user-manual` 仍是上游内容。
 
 ## 5. 下一步（P2+）
-1. 拿到真实 Key 做端到端：三个 CLI 实际调用、额度刷新、更换 Key。
-2. 自有更新源（Tauri updater 公钥 + 自有 latest.json），再打开 `BRAND.updatesEnabled`。
+1. 拿到真实 Key 做端到端：五个工具实际调用（Hermes / OpenClaw / DSH 目前只用模拟网关验证）、额度刷新、更换 Key。
+2. Actions 恢复后跑一次 tag 构建，发布第一个非预发布版本，让已装用户开始收到更新；在 Windows / macOS 上实测一次自更新。
 3. macOS / Windows 签名打包；release.yml 去掉上游专属步骤。
 4. 部署后端一键授权（见 2d），用真实账户在三平台各跑一次；拿真实 api14 Key 验证额度和三个 CLI。
 5. P3：模型别名、额度告警、多 Key。
@@ -178,7 +239,9 @@ macOS arm64 托管 runner 经常因容量排不上（首次运行等待 15 分�
 - lib crate 名保留 `cc_switch_lib`（内部名，不可见），减少合并冲突；包名 / 二进制改为 `wendingai-switch`。
 
 ## 7. 路径
-- 代码：`/workspace/cc-switch`（分支 wendingai）
-- 安装包：`/workspace/artifacts/`（deb、AppImage，未发布）
+- 代码：`/workspace/cc-switch`（分支 wendingai；v4.0.32 开发分支 wendingai-v4032）
+- 安装包：`/workspace/artifacts/`（deb、AppImage，未发布）；v4.0.32 已签名 Linux 包、`latest.json`、`SHA256SUMS.txt` 在 `/workspace/artifacts/v4.0.32/`
+- 更新签名密钥：`~/.wendingai-secrets/`（仅构建机，勿外传）
+- 工具实测环境：`/tmp/wending-e2e/`（模拟网关）、`/tmp/agent-home`（隔离 HOME）
 - 方案：`/workspace/cc-switch-wendingai-plan.md`
 - Logo 中间文件：`/workspace/wlogo/`

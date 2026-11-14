@@ -2,7 +2,8 @@
 #
 # 触发：
 #   - push 到 wendingai 分支：构建并上传 workflow artifacts
-#   - 推 tag wendingai-v*：另外在本仓库创建「草稿 + 预发布」Release 并附上全部安装包（不会自动发布）
+#   - 推 tag wendingai-v*：另外在本仓库创建草稿 Release，附全部安装包、.sig、latest.json、SHA256SUMS.txt
+#     （tag 带 `-`，如 wendingai-v4.0.32-test.1，另标为预发布；草稿都不会自动发布）
 #   - 手动 workflow_dispatch
 #
 # 签名（全部可选，缺少对应 Secret 时生成未签名安装包）：
