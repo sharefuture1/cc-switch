@@ -4434,7 +4434,7 @@ dependencies = [
  "tokio-rustls",
  "tokio-util",
  "tower 0.5.3",
- "tower-http 0.6.8",
+ "tower-http",
  "tower-service",
  "url",
  "wasm-bindgen",
@@ -4474,7 +4474,7 @@ dependencies = [
  "tokio-rustls",
  "tokio-util",
  "tower 0.5.3",
- "tower-http 0.6.8",
+ "tower-http",
  "tower-service",
  "url",
  "wasm-bindgen",
@@ -6396,22 +6396,6 @@ dependencies = [
 
 [[package]]
 name = "tower-http"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e9cd434a998747dd2c4276bc96ee2e0c7a2eadf3cae88e52be55a05fa9053f5"
-dependencies = [
- "bitflags 2.11.0",
- "bytes",
- "http",
- "http-body",
- "http-body-util",
- "pin-project-lite",
- "tower-layer",
- "tower-service",
-]
-
-[[package]]
-name = "tower-http"
 version = "0.6.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4e6559d53cc268e5031cd8429d05415bc4cb4aefc4aa5d6cc35fbf5b924a1f8"
@@ -7020,8 +7004,9 @@ checksum = "a28ac98ddc8b9274cb41bb4d9d4d5c425b6020c50c46f25559911905610b4a88"
 
 [[package]]
 name = "wendingai-switch"
-version = "4.0.28"
+version = "4.0.32"
 dependencies = [
+ "aho-corasick",
  "anyhow",
  "arboard",
  "async-stream",
@@ -7037,7 +7022,6 @@ dependencies = [
  "gtk",
  "hmac",
  "http",
- "http-body",
  "http-body-util",
  "httparse",
  "hyper",
@@ -7090,7 +7074,6 @@ dependencies = [
  "toml 0.8.23",
  "toml_edit 0.22.27",
  "tower 0.4.13",
- "tower-http 0.5.2",
  "url",
  "uuid",
  "webkit2gtk",

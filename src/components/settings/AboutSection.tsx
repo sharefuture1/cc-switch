@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { toast } from "@/lib/toast";
 import { getVersion } from "@tauri-apps/api/app";
-import { settingsApi } from "@/lib/api";
+import { providersApi, settingsApi } from "@/lib/api";
 import { useUpdate } from "@/contexts/UpdateContext";
 import { Badge } from "@/components/ui/badge";
 import { WhatsNewDialog } from "@/components/WhatsNewDialog";
@@ -24,9 +24,13 @@ import ccswitchLogo from "@/assets/icons/logo.svg";
 import { PURE_EDITION } from "@/brand/brand";
 import { WendingAboutSection } from "@/brand/components/WendingAboutSection";
 import { extractErrorMessage } from "@/utils/errorUtils";
+import { Switch } from "@/components/ui/switch";
+import { SettingsRow } from "./SettingsLayout";
 
 interface AboutSectionProps {
   isPortable: boolean;
+  autoUpdateEnabled?: boolean;
+  onAutoSave?: (updates: { autoUpdateEnabled: boolean }) => Promise<boolean>;
 }
 
 // 应用自身版本（getVersion，本地毫秒级、无网络）也缓存一份，纯为重挂时免去 loading 闪烁。
@@ -50,13 +54,17 @@ function readStarPromptDismissed(): boolean {
 /** WendingAI 纯净版换成品牌“关于”页（src/brand/components/WendingAboutSection.tsx） */
 export function AboutSection(props: AboutSectionProps) {
   return PURE_EDITION ? (
-    <WendingAboutSection />
+    <WendingAboutSection {...props} />
   ) : (
     <UpstreamAboutSection {...props} />
   );
 }
 
-function UpstreamAboutSection({ isPortable }: AboutSectionProps) {
+function UpstreamAboutSection({
+  isPortable,
+  autoUpdateEnabled = false,
+  onAutoSave,
+}: AboutSectionProps) {
   const { t } = useTranslation();
   // 惰性初始化自模块缓存：重挂时首帧即渲染上次的值，避免 loading 闪烁；首次挂载缓存
   // 为空则回退到原始初值（null / loading）。
@@ -74,8 +82,35 @@ function UpstreamAboutSection({ isPortable }: AboutSectionProps) {
     [version],
   );
 
-  const { hasUpdate, updateInfo, checkUpdate, resetDismiss, isChecking } =
-    useUpdate();
+  const {
+    hasUpdate,
+    updateInfo,
+    checkUpdate,
+    resetDismiss,
+    isChecking,
+    autoUpdateSupported,
+    refreshAutoUpdate,
+  } = useUpdate();
+
+  const handleAutoUpdateChange = useCallback(
+    async (enabled: boolean) => {
+      if (!onAutoSave) return;
+      const saved = await onAutoSave({ autoUpdateEnabled: enabled });
+      if (!saved) return;
+      // 关掉即视为不要已下好的包（后端不再报），打开就马上在后台下一次
+      await refreshAutoUpdate();
+      // 托盘里的「重启并更新」跟着开关出现 / 消失
+      providersApi.updateTrayMenu().catch(console.error);
+      if (enabled) {
+        settingsApi
+          .downloadAppUpdate()
+          .catch((error) =>
+            console.error("[AboutSection] Auto update download failed", error),
+          );
+      }
+    },
+    [onAutoSave, refreshAutoUpdate],
+  );
 
   useEffect(() => {
     let active = true;
@@ -280,6 +315,30 @@ function UpstreamAboutSection({ isPortable }: AboutSectionProps) {
             <p className="text-fg-2">{t("settings.portableUpdateHint")}</p>
           )}
         </div>
+      )}
+
+      {onAutoSave && (
+        // 关于页的其它行是 px-5，这里用 SettingsRow 对齐（SettingsSwitchRow 固定 px-4）
+        <SettingsRow
+          className="px-5 py-4"
+          label={t("autoUpdate.toggle")}
+          help={{
+            title: t("autoUpdate.toggle"),
+            body: t("autoUpdate.toggleHelp"),
+          }}
+          // 灰掉的开关要写明为什么用不了
+          description={
+            autoUpdateSupported ? undefined : t("autoUpdate.unsupported")
+          }
+          control={
+            <Switch
+              checked={autoUpdateEnabled && autoUpdateSupported}
+              disabled={!autoUpdateSupported}
+              onCheckedChange={(value) => void handleAutoUpdateChange(value)}
+              aria-label={t("autoUpdate.toggle")}
+            />
+          }
+        />
       )}
 
       <div className="flex flex-wrap items-center gap-2 px-5 py-4">

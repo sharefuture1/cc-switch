@@ -659,8 +659,8 @@ const upstreamClaudeDesktopProviderPresets =
     },
     {
       name: "9527CODE",
-      websiteUrl: "https://9527.codes",
-      apiKeyUrl: "https://9527.codes/register?aff=e5zI",
+      websiteUrl: "https://9527.codes/register?channel=ccs",
+      apiKeyUrl: "https://9527.codes/register?channel=ccs",
       category: "aggregator",
       baseUrl: "https://9527.codes",
       mode: "direct",
@@ -936,7 +936,6 @@ const upstreamClaudeDesktopProviderPresets =
       apiFormat: "anthropic",
       modelRoutes: passthroughRoutes(true),
       isPartner: true,
-      partnerPromotionKey: "ccsub",
       icon: "ccsub",
     },
     {

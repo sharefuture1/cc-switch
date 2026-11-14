@@ -8,7 +8,11 @@ import { BRAND } from "../brand";
 import logo from "@/assets/icons/logo.svg";
 
 /** 纯净版“关于”页：只显示 WendingAI 品牌，保留上游 MIT 许可要求的版权声明 */
-export function WendingAboutSection() {
+export function WendingAboutSection(_props: {
+  isPortable?: boolean;
+  autoUpdateEnabled?: boolean;
+  onAutoSave?: (updates: { autoUpdateEnabled: boolean }) => Promise<boolean>;
+}) {
   const { t } = useTranslation();
   const [version, setVersion] = useState<string | null>(null);
   useEffect(() => {

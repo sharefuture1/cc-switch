@@ -13,11 +13,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { APP_IDS } from "@/config/appConfig";
 import { providersApi, settingsApi } from "@/lib/api";
 import { useSettingsQuery } from "@/lib/query";
 import { markSeen } from "@/lib/whatsNew";
 import type { Settings } from "@/types";
+import { APP_IDS } from "@/config/appSpecs";
 
 // WendingAI：纯净版指向 WendingAI 官网，不引导到上游发布页
 const RELEASES_URL = __WENDING_PURE__
