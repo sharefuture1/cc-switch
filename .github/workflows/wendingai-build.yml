@@ -249,8 +249,8 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  draft-release:
-    name: Draft release + latest.json (tag only)
+  publish-release:
+    name: Publish release + latest.json (tag only)
     if: github.ref_type == 'tag' && startsWith(github.ref_name, 'wendingai-v')
     needs: build
     runs-on: ubuntu-22.04
@@ -282,16 +282,16 @@ jobs:
           cd installers
           sha256sum $(ls | grep -v -e '\.sig$' -e '^latest\.json$') > SHA256SUMS.txt
           ls -la
-      - name: Create draft pre-release
+      - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
           version="${TAG#wendingai-v}"
-          notes="WendingAI Switch ${version}（草稿，未发布）
+          notes="WendingAI Switch ${version}
 
-          应用内更新：发布本 Release（不勾选 pre-release）后，已安装的客户端会通过 latest.json 收到更新。
+          应用内更新：已安装的客户端会通过 latest.json 自动收到本版本。
 
           安装包未做代码签名：
           - macOS：首次打开若提示无法验证开发者，请在「系统设置 → 隐私与安全性」中点「仍要打开」，或执行 xattr -dr com.apple.quarantine \"/Applications/WendingAI Switch.app\"
@@ -299,12 +299,12 @@ jobs:
 
           基于 CC Switch（MIT License，Copyright (c) 2025 Jason Young）。"
           if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            # 重跑同一个 tag：覆盖资产并确保已经对外发布（不会把已发布版本退回草稿）
             gh release upload "$TAG" installers/* --clobber -R "$GITHUB_REPOSITORY"
+            gh release edit "$TAG" -R "$GITHUB_REPOSITORY" --draft=false --prerelease=false --latest
           else
-            # 带后缀的测试 tag（如 -test.1）建成预发布，正式 tag 只建草稿；两者都需要手动发布
-            prerelease=()
-            case "$version" in *-*) prerelease=(--prerelease) ;; esac
+            # 构建全部成功后直接发布，不再留草稿；下载页 /releases/latest 立刻可见
             gh release create "$TAG" installers/* -R "$GITHUB_REPOSITORY" \
-              --draft "${prerelease[@]}" --verify-tag \
+              --verify-tag --latest \
               --title "WendingAI Switch ${version}" --notes "$notes"
           fi
