@@ -1,6 +1,6 @@
 {
   "name": "wendingai-switch",
-  "version": "4.0.32",
+  "version": "4.0.33",
   "description": "WendingAI Switch - one-key setup for Claude Code, Codex, Hermes, OpenClaw & DeepSeek Harness on WendingAI",
   "type": "module",
   "scripts": {

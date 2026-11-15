@@ -1,6 +1,6 @@
 [package]
 name = "wendingai-switch"
-version = "4.0.32"
+version = "4.0.33"
 description = "WendingAI Switch - one-key setup for Claude Code, Codex, Hermes, OpenClaw & DeepSeek Harness"
 authors = ["WendingAI", "Jason Young (original CC Switch)"]
 license = "MIT"
