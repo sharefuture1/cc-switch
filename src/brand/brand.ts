@@ -43,6 +43,7 @@ export const BRAND = {
     "hermes",
     "openclaw",
     "dsh",
+    "workbuddy",
   ] as readonly AppId[],
   /** 纯净版隐藏的全局页面：授权中心（第三方官方账号 OAuth 登录） */
   hiddenPages: ["auth"] as readonly string[],

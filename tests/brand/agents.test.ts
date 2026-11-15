@@ -4,6 +4,7 @@ import {
   hermesSettings,
   openclawSettings,
   planAgentConfig,
+  workbuddySettings,
 } from "@/brand/agents";
 
 const main = { endpoint: "https://api.wending.ai", gateway: "newapi" as const };
@@ -84,5 +85,21 @@ describe("per-app settings", () => {
       options: { baseURL: "https://api.wending.ai/v1", apiKey: key },
     });
     expect(Object.keys(s.models)).toEqual(["laotalk-quality"]);
+  });
+
+  it("matches the upstream WorkBuddy card format", () => {
+    expect(workbuddySettings(plan, key)).toEqual({
+      vendor: "WendingAI",
+      url: "https://api.wending.ai/v1/chat/completions",
+      apiKey: key,
+      models: [
+        {
+          id: "laotalk-quality",
+          name: "WendingAI",
+          supportsToolCall: true,
+          supportsImages: false,
+        },
+      ],
+    });
   });
 });

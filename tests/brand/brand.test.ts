@@ -32,13 +32,14 @@ describe("brand config", () => {
     expect(BRAND.upstream.license).toBe("MIT License");
   });
 
-  it("enables Claude Code, Codex, Hermes, OpenClaw and DSH (no Gemini CLI)", () => {
+  it("enables Claude Code, Codex, Hermes, OpenClaw, DSH and WorkBuddy (no Gemini CLI)", () => {
     expect([...BRAND.enabledApps]).toEqual([
       "claude",
       "codex",
       "hermes",
       "openclaw",
       "dsh",
+      "workbuddy",
     ]);
     expect([...BRAND.enabledApps]).not.toContain("gemini");
     expect([...BRAND.hiddenPages]).toContain("auth");

@@ -1,15 +1,18 @@
 /**
- * 一键配置 Hermes / OpenClaw / DeepSeek Harness（累加式应用）。
+ * 一键配置 Hermes / OpenClaw / DeepSeek Harness / WorkBuddy（累加式应用）。
  *
- * 和 Claude Code / Codex 不同，这三个应用不走统一供应商，而是各自写一张固定 ID 的
+ * 和 Claude Code / Codex 不同，这些应用不走统一供应商，而是各自写一张固定 ID 的
  * “WendingAI” 供应商卡（格式与上游预设一致），写入它们自己的配置文件，并设为默认模型：
  *  - Hermes：`~/.hermes/config.yaml` 的 custom_providers + 顶层 `model:`（切换时由后端设置）
  *  - OpenClaw：`~/.openclaw/openclaw.json` 的 models.providers + agents.defaults.model / models
  *  - DeepSeek Harness：`$DSH_HOME/profiles/<web|desktop|…>/cordis.patch.yml` 的 provider
  *    + `agent-default-model`（DSH 默认用 deepseek-official，不改就用不到新供应商）
+ *  - WorkBuddy：`~/.workbuddy/models.json`（或 `WORKBUDDY_CONFIG_DIR`）里展开成多条模型条目，
+ *    条目带 `ccSwitchProviderId` 归属标记，用户自己加的条目保持不变
  *
  * 协议：主线路（new-api）所有模型都走 OpenAI Chat Completions；线路 14（sub2api）按 Key
- * 的模型族选择 Anthropic Messages（claude-*）或 OpenAI Responses（gpt-* 等）。
+ * 的模型族选择 Anthropic Messages（claude-*）或 OpenAI Responses（gpt-* 等）。WorkBuddy 只认
+ * OpenAI Chat Completions，另外两种协议下跳过它。
  */
 import { invoke } from "@tauri-apps/api/core";
 import { openclawApi, providersApi } from "@/lib/api";
@@ -17,7 +20,7 @@ import type { AppId } from "@/lib/api/types";
 import type { Provider } from "@/types";
 import { BRAND, type WendingLine } from "./brand";
 
-export const AGENT_APPS = ["hermes", "openclaw", "dsh"] as const;
+export const AGENT_APPS = ["hermes", "openclaw", "dsh", "workbuddy"] as const;
 export type AgentApp = (typeof AGENT_APPS)[number];
 
 /** 写入各应用的供应商 ID（OpenClaw / Hermes 里也是 provider key） */
@@ -137,6 +140,25 @@ export function dshSettings(plan: AgentPlan, apiKey: string) {
   };
 }
 
+/**
+ * WorkBuddy 供应商卡：`~/.workbuddy/models.json` 的每个模型条目自带 `url` / `apiKey`，
+ * 没有「供应商」这一层，所以这里给出的是上游 `WorkBuddySettingsConfig` 的形状，由后端展开成条目。
+ * 自定义模型只支持 OpenAI Chat Completions，地址要写到 `/chat/completions`。
+ */
+export function workbuddySettings(plan: AgentPlan, apiKey: string) {
+  return {
+    vendor: BRAND.shortName,
+    url: `${plan.baseUrl.replace(/\/+$/, "")}/chat/completions`,
+    apiKey,
+    models: plan.models.map((id) => ({
+      id,
+      name: BRAND.shortName,
+      supportsToolCall: true,
+      supportsImages: false,
+    })),
+  };
+}
+
 function settingsFor(app: AgentApp, plan: AgentPlan, apiKey: string) {
   switch (app) {
     case "hermes":
@@ -145,6 +167,8 @@ function settingsFor(app: AgentApp, plan: AgentPlan, apiKey: string) {
       return openclawSettings(plan, apiKey);
     case "dsh":
       return dshSettings(plan, apiKey);
+    case "workbuddy":
+      return workbuddySettings(plan, apiKey);
   }
 }
 
@@ -222,6 +246,13 @@ export async function configureAgentApps(
   const plan = planAgentConfig(line, modelIds, fallbackModel);
   const failures: AgentSetupFailure[] = [];
   for (const app of apps) {
+    if (app === "workbuddy" && plan.protocol !== "openai-completions") {
+      failures.push({
+        app,
+        error: "WorkBuddy 自定义模型只支持 OpenAI Chat Completions 线路",
+      });
+      continue;
+    }
     try {
       await configureApp(app, plan, apiKey.trim(), line.endpoint);
     } catch (error) {
